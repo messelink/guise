@@ -14,6 +14,12 @@ database. Aliases live in `postfix-virtual.cf`, and the embedded label travels
 in the address itself — guise owns no application data of its own beyond a
 regenerable session key.
 
+## Screenshots
+
+| Login | Dashboard |
+|---|---|
+| <img src="screenshots/login.jpg" alt="Login screen" width="400"> | <img src="screenshots/dashboard.jpg" alt="Dashboard" width="400"> |
+
 ## Repo layout
 
 ```
