@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="login">
+  <form method="post" action="{{ url_for('auth.login') }}">
+    <label>
+      Username
+      <input type="text" name="username" autocomplete="username" autofocus required>
+    </label>
+    <label>
+      Password
+      <input type="password" name="password" autocomplete="current-password" required>
+    </label>
+    <button type="submit">Log in</button>
+  </form>
+</section>
+{% endblock %}

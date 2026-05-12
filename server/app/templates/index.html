@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block content %}
+<p class="target">Aliases routing to <strong>{{ target_email }}</strong></p>
+
+<section class="create">
+  <h2>New alias</h2>
+  <form method="post" action="{{ url_for('main.create') }}">
+    <label>
+      Label (optional)
+      <input type="text" id="label" name="label" maxlength="80" autocomplete="off"
+             placeholder="e.g. netflix">
+    </label>
+    <p class="preview">
+      Preview: <code id="preview">{{ tag }}xxxxxxxx<span id="preview-suffix"></span>@{{ domain }}</code>
+    </p>
+    <button type="submit">Create alias</button>
+  </form>
+</section>
+
+<section class="aliases">
+  <h2>Managed by Guise</h2>
+  {% if managed %}
+    <ul class="alias-list">
+      {% for row in managed %}
+        <li>
+          <code>{{ row.local_part }}</code>
+          {% if row.label %}<span class="label">{{ row.label }}</span>{% else %}<span class="label muted">no label</span>{% endif %}
+          <form method="post" action="{{ url_for('main.delete', local_part=row.local_part) }}" class="inline">
+            <button type="submit" class="danger"
+                    onclick="return confirm('Delete {{ row.local_part }}?');">delete</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="empty">No Guise-managed aliases yet.</p>
+  {% endif %}
+</section>
+
+{% if unmanaged %}
+<section class="aliases unmanaged">
+  <h2>Other aliases routing to you</h2>
+  <p class="muted">These were not created by Guise. Be careful before deleting &mdash; they may serve a different purpose.</p>
+  <ul class="alias-list">
+    {% for row in unmanaged %}
+      <li>
+        <code>{{ row.local_part }}</code>
+        <span class="label muted">unmanaged</span>
+        <form method="post" action="{{ url_for('main.delete', local_part=row.local_part) }}" class="inline">
+          <button type="submit" class="danger"
+                  onclick="return confirm('{{ row.local_part }} was NOT created by Guise. Really delete?');">delete</button>
+        </form>
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<script>
+(function () {
+  const input = document.getElementById('label');
+  const suffix = document.getElementById('preview-suffix');
+  function slug(raw) {
+    return raw.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+  }
+  input.addEventListener('input', function () {
+    const s = slug(input.value);
+    suffix.textContent = s ? '-' + s : '';
+  });
+})();
+</script>
+{% endblock %}
