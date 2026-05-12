@@ -74,12 +74,62 @@ Set in the deploying compose file.
 
 - The Docker socket is mounted in. Anyone with shell access to the guise
   container is root-equivalent on the host.
-- IMAP connection uses TLS but skips hostname verification (the certificate is
-  typically issued for the public mail hostname while we reach the mailserver
-  by its Docker network name). Encryption is still in place; trust comes from
-  the Docker bridge boundary.
+- IMAP connection uses TLS. By default the cert is validated against the
+  system trust store (`GUISE_IMAP_CAFILE` overrides). Hostname verification
+  is off because we reach the mailserver by container name, not by the cert
+  CN. `GUISE_IMAP_INSECURE=1` is the explicit escape hatch for self-signed
+  or testing setups.
 - Login validation happens at dovecot. fail2ban-postfix and fail2ban-dovecot
   jails in the mailserver container catch brute force.
+- App-level rate limit (`flask-limiter`) caps `/login` at 20/min and
+  `POST /aliases` at 30/min per client IP. `ProxyFix` is enabled so the
+  real client IP is used (set `RemoteIPHeader X-Forwarded-For` in your
+  reverse proxy and trust only the proxy's IP).
+
+### Hardening the docker socket (recommended)
+
+The default compose snippet mounts `/var/run/docker.sock` directly, giving
+the guise container full Docker API access. Any RCE in guise escalates to
+host root.
+
+For defense-in-depth, front the socket with
+[`tecnativa/docker-socket-proxy`](https://github.com/Tecnativa/docker-socket-proxy)
+and grant only the endpoints guise needs:
+
+```yaml
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy
+    container_name: guise-socket-proxy
+    restart: always
+    environment:
+      CONTAINERS: 1     # GET /containers (used by docker exec)
+      EXEC: 1           # POST /containers/.../exec
+      POST: 1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    # not exposed to the host; only reachable from the project's docker network
+
+  guise:
+    image: guise:latest
+    environment:
+      DOCKER_HOST: tcp://guise-socket-proxy:2375
+      # … other env vars as before
+    # remove the docker.sock volume and the group_add: ["988"] entry
+    depends_on:
+      - guise-socket-proxy
+      - mailserver
+```
+
+A bug in guise can then only ask the proxy to run `exec` on existing
+containers — not start new containers with host-path mounts, modify
+networks, or read arbitrary container state.
+
+Complementary hardening worth considering:
+
+- `read_only: true` on the guise container with a tmpfs for `/tmp`. All
+  writes guise actually needs are scoped to the volume-mounted `/data` dir.
+- A custom AppArmor or seccomp profile for the guise container.
+- Pinning the `python:3.12-slim` base image to a digest.
 
 ## Deploy
 
