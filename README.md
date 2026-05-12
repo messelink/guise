@@ -41,25 +41,20 @@ guise/
 └── server/                Python/Flask source for the guise Docker image
 ```
 
-`server/` builds the image (`guise:latest`); the running deployment is a
-sidecar service inside your `docker-mailserver` compose project.
+`server/` builds the image; the running deployment is a sidecar service inside
+your `docker-mailserver` compose project. Prebuilt images are published to
+GitHub Container Registry at `ghcr.io/messelink/guise` for `linux/amd64` and
+`linux/arm64`.
 
 ## Quickstart
 
-Build the image on the host running `docker-mailserver`:
-
-```
-cd guise/server
-make build
-```
-
 Add guise as a service in your `docker-mailserver` `compose.yaml`, alongside
-the existing `mailserver` service (see `server/README.md` for env vars). The
-minimum compose block:
+the existing `mailserver` service (see `server/README.md` for the full env-var
+reference):
 
 ```yaml
   guise:
-    image: guise:latest
+    image: ghcr.io/messelink/guise:latest
     container_name: guise
     restart: always
     ports: ["127.0.0.1:9100:8000"]
@@ -79,12 +74,29 @@ minimum compose block:
     depends_on: [mailserver]
 ```
 
-Then:
+Then from your docker-mailserver compose project directory:
 
 ```
 mkdir -p guise-data
-docker compose config -q && docker compose up -d guise
+docker compose pull guise
+docker compose up -d guise
 ```
+
+To pin a specific version instead of tracking `:latest`, use
+`ghcr.io/messelink/guise:0.1.0` (or any tag from the
+[Releases page](https://github.com/messelink/guise/releases)). Upgrades are
+then a `docker compose pull guise && docker compose up -d --force-recreate guise`.
+
+### Build from source instead
+
+If you'd rather not pull a prebuilt image:
+
+```
+cd guise/server
+make build         # produces local guise:latest
+```
+
+…then use `image: guise:latest` in the compose block above.
 
 guise listens on `127.0.0.1:9100`. Front it with your existing reverse proxy.
 
