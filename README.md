@@ -19,9 +19,13 @@ regenerable session key.
 
 ## Screenshots
 
-| Login | Dashboard |
-|---|---|
-| <img src="screenshots/login.jpg" alt="Login screen" width="400"> | <img src="screenshots/dashboard.jpg" alt="Dashboard" width="400"> |
+### Login
+
+![Login screen](screenshots/login.jpg)
+
+### Dashboard
+
+![Dashboard](screenshots/dashboard.jpg)
 
 ## Repo layout
 
