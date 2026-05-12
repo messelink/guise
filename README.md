@@ -31,8 +31,14 @@ regenerable session key.
 
 ```
 guise/
-├── README.md         this file
-└── server/           Python/Flask source for the guise Docker image
+├── README.md              this file
+├── LICENSE                AGPL-3.0
+├── CHANGELOG.md
+├── CONTRIBUTING.md
+├── SECURITY.md
+├── screenshots/           login + dashboard
+├── .github/workflows/     GitHub Actions CI (pytest on push)
+└── server/                Python/Flask source for the guise Docker image
 ```
 
 `server/` builds the image (`guise:latest`); the running deployment is a
