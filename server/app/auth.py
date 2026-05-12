@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 from flask import Flask, abort, current_app, flash, g, redirect, render_template, request, session, url_for
 
 from .config import Config
+from .extensions import limiter
 
 
 USERNAME_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,62}$")
@@ -112,6 +113,7 @@ def register(app: Flask) -> None:
     bp = Blueprint("auth", __name__)
 
     @bp.route("/login", methods=["GET", "POST"])
+    @limiter.limit("20 per minute")
     def login():
         config: Config = current_app.config["GUISE"]
         if request.method == "POST":

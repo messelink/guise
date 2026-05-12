@@ -3,6 +3,7 @@ from flask import Blueprint, Flask, abort, current_app, flash, g, redirect, rend
 from . import aliases
 from .auth import login_required
 from .config import Config
+from .extensions import limiter
 
 
 def register(app: Flask) -> None:
@@ -30,6 +31,7 @@ def register(app: Flask) -> None:
 
     @bp.route("/aliases", methods=["POST"])
     @login_required
+    @limiter.limit("30 per minute")
     def create():
         config: Config = current_app.config["GUISE"]
         raw_label = request.form.get("label", "")
