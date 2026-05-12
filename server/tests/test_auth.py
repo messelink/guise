@@ -53,6 +53,62 @@ class TestImapCheck:
         assert ctx.check_hostname is False
 
 
+class TestSafeNextUrl:
+    DEFAULT = "/"
+
+    def test_empty_returns_default(self):
+        assert auth._safe_next_url("", self.DEFAULT) == self.DEFAULT
+        assert auth._safe_next_url(None, self.DEFAULT) == self.DEFAULT
+
+    def test_simple_path_preserved(self):
+        assert auth._safe_next_url("/dashboard", self.DEFAULT) == "/dashboard"
+
+    def test_path_with_query_preserved(self):
+        assert auth._safe_next_url("/foo?x=1&y=2", self.DEFAULT) == "/foo?x=1&y=2"
+
+    def test_root_preserved(self):
+        assert auth._safe_next_url("/", self.DEFAULT) == "/"
+
+    def test_protocol_relative_rejected(self):
+        assert auth._safe_next_url("//evil.com/path", self.DEFAULT) == self.DEFAULT
+        assert auth._safe_next_url("//evil.com", self.DEFAULT) == self.DEFAULT
+
+    def test_backslash_smuggle_rejected(self):
+        assert auth._safe_next_url("/\\evil.com", self.DEFAULT) == self.DEFAULT
+
+    def test_absolute_url_rejected(self):
+        assert auth._safe_next_url("https://evil.com/", self.DEFAULT) == self.DEFAULT
+        assert auth._safe_next_url("http://evil.com/", self.DEFAULT) == self.DEFAULT
+
+    def test_scheme_relative_rejected(self):
+        # Some browsers / proxies treat these oddly
+        assert auth._safe_next_url("javascript:alert(1)", self.DEFAULT) == self.DEFAULT
+
+    def test_relative_path_rejected(self):
+        # Must start with single '/' — anything else (including relative) defaults
+        assert auth._safe_next_url("foo", self.DEFAULT) == self.DEFAULT
+
+
+class TestCsrfValid:
+    def test_match(self):
+        assert auth._csrf_valid("abc123", "abc123") is True
+
+    def test_mismatch(self):
+        assert auth._csrf_valid("abc123", "xyz456") is False
+
+    def test_empty_submitted(self):
+        assert auth._csrf_valid("", "abc123") is False
+        assert auth._csrf_valid(None, "abc123") is False
+
+    def test_empty_expected(self):
+        assert auth._csrf_valid("abc123", "") is False
+        assert auth._csrf_valid("abc123", None) is False
+
+    def test_both_empty(self):
+        assert auth._csrf_valid("", "") is False
+        assert auth._csrf_valid(None, None) is False
+
+
 class TestStripDomain:
     def test_no_at_passes_through(self):
         assert auth._strip_domain("alice", "example.com") == "alice"

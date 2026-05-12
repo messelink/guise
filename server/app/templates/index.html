@@ -5,6 +5,7 @@
 <section class="create">
   <h2>New alias</h2>
   <form method="post" action="{{ url_for('main.create') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label>
       Label (optional)
       <input type="text" id="label" name="label" maxlength="80" autocomplete="off"
@@ -26,6 +27,7 @@
           <code>{{ row.local_part }}</code>
           {% if row.label %}<span class="label">{{ row.label }}</span>{% else %}<span class="label muted">no label</span>{% endif %}
           <form method="post" action="{{ url_for('main.delete', local_part=row.local_part) }}" class="inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="danger"
                     onclick="return confirm('Delete {{ row.local_part }}?');">delete</button>
           </form>
@@ -47,6 +49,7 @@
         <code>{{ row.local_part }}</code>
         <span class="label muted">unmanaged</span>
         <form method="post" action="{{ url_for('main.delete', local_part=row.local_part) }}" class="inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="danger"
                   onclick="return confirm('{{ row.local_part }} was NOT created by guise. Really delete?');">delete</button>
         </form>

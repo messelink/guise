@@ -1,15 +1,57 @@
 import imaplib
 import re
+import secrets
 import ssl
 from functools import wraps
 from typing import Callable
+from urllib.parse import urlparse
 
-from flask import Flask, current_app, flash, g, redirect, render_template, request, session, url_for
+from flask import Flask, abort, current_app, flash, g, redirect, render_template, request, session, url_for
 
 from .config import Config
 
 
 USERNAME_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,62}$")
+UNSAFE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+
+
+def csrf_token() -> str:
+    """Return the per-session CSRF token, creating it on first access."""
+    if "csrf_token" not in session:
+        session["csrf_token"] = secrets.token_urlsafe(32)
+    return session["csrf_token"]
+
+
+def _csrf_valid(submitted: str | None, expected: str | None) -> bool:
+    if not submitted or not expected:
+        return False
+    return secrets.compare_digest(submitted, expected)
+
+
+def validate_csrf() -> None:
+    """Before-request hook: 400 on unsafe methods with missing/wrong token."""
+    if request.method not in UNSAFE_METHODS:
+        return
+    submitted = request.form.get("csrf_token") or request.headers.get("X-CSRF-Token")
+    expected = session.get("csrf_token")
+    if not _csrf_valid(submitted, expected):
+        abort(400, description="Invalid CSRF token")
+
+
+def _safe_next_url(raw: str | None, default: str) -> str:
+    """Reject open-redirect attempts. Only same-site paths starting with a
+    single '/' are permitted; '//host' and '/\\host' are rejected.
+    """
+    if not raw:
+        return default
+    if not raw.startswith("/"):
+        return default
+    if raw.startswith("//") or raw.startswith("/\\"):
+        return default
+    parsed = urlparse(raw)
+    if parsed.scheme or parsed.netloc:
+        return default
+    return raw
 
 
 def _strip_domain(username: str, domain: str) -> str | None:
@@ -91,9 +133,9 @@ def register(app: Flask) -> None:
             elif _imap_check(username, password, config):
                 session.clear()
                 session["user"] = username
-                next_url = request.args.get("next") or url_for("main.index")
-                if not next_url.startswith("/"):
-                    next_url = url_for("main.index")
+                session.permanent = True
+                default_next = url_for("main.index")
+                next_url = _safe_next_url(request.args.get("next"), default_next)
                 return redirect(next_url)
             else:
                 flash("Login failed.", "error")
