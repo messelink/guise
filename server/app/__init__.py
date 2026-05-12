@@ -4,6 +4,9 @@ from .config import load_config
 from . import auth, routes
 
 
+__version__ = "0.1.0"
+
+
 def create_app() -> Flask:
     app = Flask(__name__)
     config = load_config()
@@ -13,6 +16,7 @@ def create_app() -> Flask:
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=config.session_cookie_secure,
         GUISE=config,
+        GUISE_VERSION=__version__,
     )
     auth.register(app)
     routes.register(app)
