@@ -53,6 +53,29 @@ class TestImapCheck:
         assert ctx.check_hostname is False
 
 
+class TestStripDomain:
+    def test_no_at_passes_through(self):
+        assert auth._strip_domain("alice", "example.com") == "alice"
+
+    def test_matching_domain_stripped(self):
+        assert auth._strip_domain("alice@example.com", "example.com") == "alice"
+
+    def test_domain_case_insensitive(self):
+        assert auth._strip_domain("alice@EXAMPLE.COM", "example.com") == "alice"
+        assert auth._strip_domain("alice@example.com", "Example.Com") == "alice"
+
+    def test_mismatched_domain_returns_none(self):
+        assert auth._strip_domain("alice@other.com", "example.com") is None
+
+    def test_empty_local_with_matching_domain(self):
+        # @example.com with empty local part — strips to "", caller's regex will reject
+        assert auth._strip_domain("@example.com", "example.com") == ""
+
+    def test_multiple_at_signs_use_first(self):
+        # First @ is the separator; "example@example.com" as domain won't match
+        assert auth._strip_domain("alice@example@example.com", "example.com") is None
+
+
 class TestUsernameRegex:
     def test_accepts_simple(self):
         assert auth.USERNAME_RE.match("alice")

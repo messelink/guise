@@ -12,6 +12,22 @@ from .config import Config
 USERNAME_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,62}$")
 
 
+def _strip_domain(username: str, domain: str) -> str | None:
+    """Convenience: if the user typed a full email address with our configured
+    domain, strip the @suffix and use the short form.
+
+    Returns the short username on success (or the unchanged input if no `@`),
+    or None if `@` is present with a different domain (so the caller can flash
+    a clearer error than the username regex would produce).
+    """
+    if "@" not in username:
+        return username
+    local, _, domain_part = username.partition("@")
+    if domain_part.lower() == domain.lower():
+        return local
+    return None
+
+
 def _imap_check(username: str, password: str, config: Config) -> bool:
     """Authenticate against the mailserver's dovecot via IMAPS.
 
@@ -57,9 +73,16 @@ def register(app: Flask) -> None:
     def login():
         config: Config = current_app.config["GUISE"]
         if request.method == "POST":
-            username = (request.form.get("username") or "").strip().lower()
+            raw = (request.form.get("username") or "").strip().lower()
             password = request.form.get("password") or ""
-            if not USERNAME_RE.match(username):
+            username = _strip_domain(raw, config.domain)
+            if username is None:
+                flash(
+                    f"This instance manages aliases for {config.domain}. "
+                    "Enter your short username (without @domain).",
+                    "error",
+                )
+            elif not USERNAME_RE.match(username):
                 flash("Invalid username.", "error")
             elif username in config.denied_users:
                 flash("This account is not permitted to use Guise.", "error")
