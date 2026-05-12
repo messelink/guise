@@ -12,11 +12,11 @@ sidecar service inside the docker-mailserver compose project.
   through dovecot's fail2ban jail.
 - **Alias CRUD**: `docker exec mailserver setup alias add/del/list` via the
   mounted host docker socket. The mailserver container is the source of truth.
-- **State Guise owns**: only `/data/secret_key` (Flask session signing key,
+- **State guise owns**: only `/data/secret_key` (Flask session signing key,
   regenerated on first start). Wiping `guise-data/` and restarting is a clean
   reset — no user data is lost because no user data is stored.
 - **Alias naming**: `<GUISE_TAG><8 hex>[-<slug>]@<GUISE_DOMAIN>`. Default
-  tag `g-`. The tag is how Guise identifies its own aliases versus legacy
+  tag `g-`. The tag is how guise identifies its own aliases versus legacy
   ones in `postfix-virtual.cf`.
 
 ## Layout
@@ -72,7 +72,7 @@ Set in the deploying compose file.
 
 ## Trust boundaries
 
-- The Docker socket is mounted in. Anyone with shell access to the Guise
+- The Docker socket is mounted in. Anyone with shell access to the guise
   container is root-equivalent on the host.
 - IMAP connection uses TLS but skips hostname verification (the certificate is
   typically issued for the public mail hostname while we reach the mailserver

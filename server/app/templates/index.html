@@ -18,7 +18,7 @@
 </section>
 
 <section class="aliases">
-  <h2>Managed by Guise</h2>
+  <h2>Managed by guise</h2>
   {% if managed %}
     <ul class="alias-list">
       {% for row in managed %}
@@ -33,14 +33,14 @@
       {% endfor %}
     </ul>
   {% else %}
-    <p class="empty">No Guise-managed aliases yet.</p>
+    <p class="empty">No guise-managed aliases yet.</p>
   {% endif %}
 </section>
 
 {% if unmanaged %}
 <section class="aliases unmanaged">
   <h2>Other aliases routing to you</h2>
-  <p class="muted">These were not created by Guise. Be careful before deleting &mdash; they may serve a different purpose.</p>
+  <p class="muted">These were not created by guise. Be careful before deleting &mdash; they may serve a different purpose.</p>
   <ul class="alias-list">
     {% for row in unmanaged %}
       <li>
@@ -48,7 +48,7 @@
         <span class="label muted">unmanaged</span>
         <form method="post" action="{{ url_for('main.delete', local_part=row.local_part) }}" class="inline">
           <button type="submit" class="danger"
-                  onclick="return confirm('{{ row.local_part }} was NOT created by Guise. Really delete?');">delete</button>
+                  onclick="return confirm('{{ row.local_part }} was NOT created by guise. Really delete?');">delete</button>
         </form>
       </li>
     {% endfor %}

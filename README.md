@@ -1,4 +1,4 @@
-# Guise
+# guise
 
 > Copyright (C) 2026 Pim Messelink &lt;g-2eebed68-guise@club77.org&gt;
 > Licensed under the GNU Affero General Public License v3.0 or later. See `LICENSE`.
@@ -11,7 +11,7 @@ to your real mailbox.
 
 Auth piggybacks on the mailserver itself (IMAP), so there's no separate user
 database. Aliases live in `postfix-virtual.cf`, and the embedded label travels
-in the address itself — Guise owns no application data of its own beyond a
+in the address itself — guise owns no application data of its own beyond a
 regenerable session key.
 
 ## Repo layout
@@ -34,7 +34,7 @@ cd guise/server
 make build
 ```
 
-Add Guise as a service in your `docker-mailserver` `compose.yaml`, alongside
+Add guise as a service in your `docker-mailserver` `compose.yaml`, alongside
 the existing `mailserver` service (see `server/README.md` for env vars). The
 minimum compose block:
 
@@ -67,7 +67,7 @@ mkdir -p guise-data
 docker compose config -q && docker compose up -d guise
 ```
 
-Guise listens on `127.0.0.1:9100`. Front it with your existing reverse proxy.
+guise listens on `127.0.0.1:9100`. Front it with your existing reverse proxy.
 
 ## Apache reverse-proxy vhost (example)
 
@@ -99,7 +99,7 @@ the cert with your usual ACME client (e.g. `certbot --apache -d guise.example.co
 1. Browse to `https://guise.example.com/login`
 2. Log in with your short mailserver username + password
 3. Dashboard shows two sections:
-   - **Managed by Guise** — addresses starting with `g-`, with their labels
+   - **Managed by guise** — addresses starting with `g-`, with their labels
    - **Other aliases routing to you** — anything else in `postfix-virtual.cf`
      pointing to your address (pre-existing aliases). Deleting one of these
      prompts an extra confirmation.

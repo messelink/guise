@@ -85,7 +85,7 @@ def register(app: Flask) -> None:
             elif not USERNAME_RE.match(username):
                 flash("Invalid username.", "error")
             elif username in config.denied_users:
-                flash("This account is not permitted to use Guise.", "error")
+                flash("This account is not permitted to use guise.", "error")
             elif not password:
                 flash("Password required.", "error")
             elif _imap_check(username, password, config):

@@ -22,13 +22,18 @@ header {
   justify-content: space-between;
   align-items: center;
   padding: 1rem 2rem;
-  border-bottom: 1px solid var(--border);
-  background: white;
+  background: var(--accent);
+  color: white;
 }
 header h1 { margin: 0; font-size: 1.4rem; }
-header h1 a { color: var(--fg); text-decoration: none; }
+header h1 a {
+  color: white;
+  font-weight: 800;
+  text-decoration: none;
+}
 header nav { display: flex; gap: 1rem; align-items: center; }
-header .user { color: var(--muted); }
+header .user { color: rgba(255, 255, 255, 0.8); }
+header nav button.link { color: white; }
 
 main {
   max-width: 800px;

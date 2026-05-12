@@ -66,7 +66,7 @@ class TestClassify:
 
     def test_tag_random_but_label_has_hyphen(self):
         # Labels can't contain hyphens (those are the separator), so a label
-        # containing '-' should mean someone created this outside Guise's rules
+        # containing '-' should mean someone created this outside guise's rules
         kind, _ = aliases.classify("g-a3f82c11-bad-label", self.TAG)
         assert kind == "unmanaged"
 
@@ -79,7 +79,7 @@ class TestClassify:
         assert kind == "unmanaged"
 
     def test_random_only_without_tag(self):
-        # 8 hex chars alone are NOT Guise-managed; tag is required
+        # 8 hex chars alone are NOT guise-managed; tag is required
         kind, _ = aliases.classify("a3f82c11", self.TAG)
         assert kind == "unmanaged"
 
