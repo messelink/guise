@@ -164,6 +164,36 @@ class TestBuildView:
         assert view["managed"][0].label == ""
 
 
+class TestEmailShapeCheck:
+    def test_valid_email(self):
+        aliases._check_email_shape("alice@example.com", "bob@example.com")  # no raise
+
+    def test_rejects_dash_leading_alias(self):
+        import pytest
+        with pytest.raises(ValueError):
+            aliases._check_email_shape("-flag@example.com", "bob@example.com")
+
+    def test_rejects_dash_leading_target(self):
+        import pytest
+        with pytest.raises(ValueError):
+            aliases._check_email_shape("alice@example.com", "-flag@example.com")
+
+    def test_rejects_no_at(self):
+        import pytest
+        with pytest.raises(ValueError):
+            aliases._check_email_shape("alice", "bob@example.com")
+
+    def test_rejects_empty(self):
+        import pytest
+        with pytest.raises(ValueError):
+            aliases._check_email_shape("", "bob@example.com")
+
+    def test_rejects_whitespace(self):
+        import pytest
+        with pytest.raises(ValueError):
+            aliases._check_email_shape("alice@example.com bob", "x@y.z")
+
+
 class TestAnsiStrip:
     def test_strips_color_codes(self):
         text = "\x1b[0;31m* a@x b@x\x1b[0m"

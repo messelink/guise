@@ -15,6 +15,8 @@ def config(tmp_path):
         mailserver_container="mailserver",
         imap_host="mailserver",
         imap_port=993,
+        imap_cafile=None,
+        imap_insecure=False,
         data_dir=tmp_path,
         secret_key="test-secret",
         session_cookie_secure=False,
@@ -51,6 +53,34 @@ class TestImapCheck:
         _, kwargs = mock_imap.call_args
         ctx = kwargs["ssl_context"]
         assert ctx.check_hostname is False
+
+    @patch("app.auth.imaplib.IMAP4_SSL")
+    def test_cert_verification_required_by_default(self, mock_imap, config):
+        instance = MagicMock()
+        instance.__enter__.return_value = instance
+        mock_imap.return_value = instance
+        auth._imap_check("alice", "p", config)
+        _, kwargs = mock_imap.call_args
+        ctx = kwargs["ssl_context"]
+        import ssl as _ssl
+        assert ctx.verify_mode == _ssl.CERT_REQUIRED
+
+    @patch("app.auth.imaplib.IMAP4_SSL")
+    def test_insecure_mode_disables_verification(self, mock_imap, tmp_path):
+        insecure_config = Config(
+            domain="example.com", tag="g-", denied_users=frozenset(),
+            mailserver_container="mailserver", imap_host="mailserver",
+            imap_port=993, imap_cafile=None, imap_insecure=True,
+            data_dir=tmp_path, secret_key="test", session_cookie_secure=False,
+        )
+        instance = MagicMock()
+        instance.__enter__.return_value = instance
+        mock_imap.return_value = instance
+        auth._imap_check("alice", "p", insecure_config)
+        _, kwargs = mock_imap.call_args
+        ctx = kwargs["ssl_context"]
+        import ssl as _ssl
+        assert ctx.verify_mode == _ssl.CERT_NONE
 
 
 class TestSafeNextUrl:

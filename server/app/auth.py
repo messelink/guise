@@ -74,14 +74,22 @@ def _strip_domain(username: str, domain: str) -> str | None:
 def _imap_check(username: str, password: str, config: Config) -> bool:
     """Authenticate against the mailserver's dovecot via IMAPS.
 
-    Hostname verification is disabled because we reach the mailserver by its
-    Docker network name (typically `mailserver`), not by the cert's CN (the
-    public mail hostname). Encryption is still in place; trust comes from the
-    Docker bridge boundary.
+    Cert validation is on by default (CERT_REQUIRED against the system trust
+    store, or `GUISE_IMAP_CAFILE` if set). Hostname verification is off because
+    we typically reach the mailserver by its Docker network name (`mailserver`),
+    not by the cert's CN (the public mail hostname).
+
+    `GUISE_IMAP_INSECURE=1` disables all TLS verification — only use if you
+    genuinely need it and understand the MITM exposure.
     """
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
+    if config.imap_insecure:
+        ctx.verify_mode = ssl.CERT_NONE
+    else:
+        ctx.verify_mode = ssl.CERT_REQUIRED
+        if config.imap_cafile:
+            ctx.load_verify_locations(cafile=config.imap_cafile)
     full = f"{username}@{config.domain}"
     try:
         with imaplib.IMAP4_SSL(config.imap_host, config.imap_port, ssl_context=ctx, timeout=10) as imap:

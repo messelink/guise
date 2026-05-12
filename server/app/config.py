@@ -12,6 +12,8 @@ class Config:
     mailserver_container: str
     imap_host: str
     imap_port: int
+    imap_cafile: str | None
+    imap_insecure: bool
     data_dir: Path
     secret_key: str
     session_cookie_secure: bool
@@ -30,8 +32,13 @@ def _load_or_create_secret_key(data_dir: Path) -> str:
     if key_file.exists():
         return key_file.read_text().strip()
     key = secrets.token_urlsafe(64)
-    key_file.write_text(key)
-    key_file.chmod(0o600)
+    # Atomic create with restrictive mode from the start (no write-then-chmod
+    # window where the secret is world-readable).
+    fd = os.open(str(key_file), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        os.write(fd, key.encode())
+    finally:
+        os.close(fd)
     return key
 
 
@@ -52,6 +59,8 @@ def load_config() -> Config:
         mailserver_container=os.environ.get("GUISE_MAILSERVER_CONTAINER", "mailserver"),
         imap_host=os.environ.get("GUISE_IMAP_HOST", "mailserver"),
         imap_port=int(os.environ.get("GUISE_IMAP_PORT", "993")),
+        imap_cafile=os.environ.get("GUISE_IMAP_CAFILE") or None,
+        imap_insecure=_bool("GUISE_IMAP_INSECURE", False),
         data_dir=data_dir,
         secret_key=_load_or_create_secret_key(data_dir),
         session_cookie_secure=_bool("SESSION_COOKIE_SECURE", True),

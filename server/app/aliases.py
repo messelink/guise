@@ -10,6 +10,7 @@ RANDOM_RE = re.compile(r"^[a-f0-9]{8}$")
 SLUG_RE = re.compile(r"^[a-z0-9_]+$")
 _SLUG_REPLACE = re.compile(r"[^a-z0-9]+")
 _SLUG_COLLAPSE = re.compile(r"_+")
+EMAIL_RE = re.compile(r"^[a-z0-9][a-z0-9._+-]*@[a-z0-9][a-z0-9.-]*$")
 
 
 Kind = Literal["managed_labeled", "managed_unlabeled", "unmanaged"]
@@ -104,13 +105,29 @@ def list_aliases(container: str) -> list[tuple[str, str]]:
     return parse_alias_list(_strip_ansi(result.stdout))
 
 
+def _check_email_shape(alias: str, target: str) -> None:
+    """Reject anything that's not a well-formed email address shape.
+
+    Defense-in-depth against argv-injection: even though we pass values as
+    argv elements (no shell), a value starting with '-' could be interpreted
+    as a flag by the downstream `setup` script. Constraining inputs to the
+    [a-z0-9._+-]+@[a-z0-9.-]+ shape rules that out entirely.
+    """
+    if not EMAIL_RE.match(alias):
+        raise ValueError(f"alias does not match expected shape: {alias!r}")
+    if not EMAIL_RE.match(target):
+        raise ValueError(f"target does not match expected shape: {target!r}")
+
+
 def add_alias(container: str, alias: str, target: str) -> None:
+    _check_email_shape(alias, target)
     result = _run_setup(container, "alias", "add", alias, target)
     if result.returncode != 0:
         raise RuntimeError(f"setup alias add failed: {result.stderr.strip() or result.stdout.strip()}")
 
 
 def del_alias(container: str, alias: str, target: str) -> None:
+    _check_email_shape(alias, target)
     result = _run_setup(container, "alias", "del", alias, target)
     if result.returncode != 0:
         raise RuntimeError(f"setup alias del failed: {result.stderr.strip() or result.stdout.strip()}")
