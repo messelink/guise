@@ -137,6 +137,9 @@ def register(app: Flask) -> None:
             elif not USERNAME_RE.match(username):
                 flash("Invalid username.", "error")
             elif username in config.denied_users:
+                current_app.logger.warning(
+                    "LOGIN_DENIED user=%s ip=%s", username, request.remote_addr,
+                )
                 flash("This account is not permitted to use guise.", "error")
             elif not password:
                 flash("Password required.", "error")
@@ -144,16 +147,27 @@ def register(app: Flask) -> None:
                 session.clear()
                 session["user"] = username
                 session.permanent = True
+                current_app.logger.info(
+                    "LOGIN user=%s ip=%s", username, request.remote_addr,
+                )
                 default_next = url_for("main.index")
                 next_url = _safe_next_url(request.args.get("next"), default_next)
                 return redirect(next_url)
             else:
+                current_app.logger.warning(
+                    "LOGIN_FAILED user=%s ip=%s", username, request.remote_addr,
+                )
                 flash("Login failed.", "error")
         return render_template("login.html")
 
     @bp.route("/logout", methods=["POST"])
     def logout():
+        user = session.get("user")
         session.clear()
+        if user:
+            current_app.logger.info(
+                "LOGOUT user=%s ip=%s", user, request.remote_addr,
+            )
         return redirect(url_for("auth.login"))
 
     app.register_blueprint(bp)

@@ -29,7 +29,7 @@
           <form method="post" action="{{ url_for('main.delete', local_part=row.local_part) }}" class="inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="danger"
-                    onclick="return confirm('Delete {{ row.local_part }}?');">delete</button>
+                    data-confirm="Delete {{ row.local_part }}?">delete</button>
           </form>
         </li>
       {% endfor %}
@@ -51,7 +51,7 @@
         <form method="post" action="{{ url_for('main.delete', local_part=row.local_part) }}" class="inline">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="danger"
-                  onclick="return confirm('{{ row.local_part }} was NOT created by guise. Really delete?');">delete</button>
+                  data-confirm="{{ row.local_part }} was NOT created by guise. Really delete?">delete</button>
         </form>
       </li>
     {% endfor %}
@@ -69,6 +69,13 @@
   input.addEventListener('input', function () {
     const s = slug(input.value);
     suffix.textContent = s ? '-' + s : '';
+  });
+
+  // Delete confirmation via data-attribute (no template interpolation into JS).
+  document.querySelectorAll('button[data-confirm]').forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+      if (!confirm(btn.dataset.confirm)) e.preventDefault();
+    });
   });
 })();
 </script>
