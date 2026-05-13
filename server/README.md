@@ -72,8 +72,17 @@ Set in the deploying compose file.
 
 ## Trust boundaries
 
-- The Docker socket is mounted in. Anyone with shell access to the guise
-  container is root-equivalent on the host.
+- **Docker API access is mediated by a `docker-socket-proxy` sidecar**
+  (`tecnativa/docker-socket-proxy`), included in the default install. The
+  proxy mounts `/var/run/docker.sock` read-only and exposes only the
+  `CONTAINERS` + `EXEC` API endpoints over `tcp://guise-socket-proxy:2375`
+  on the project's internal Docker network — never on the host or the
+  internet. guise itself does not mount the host socket, is not a member
+  of the host `docker` group, and is connected to the Docker daemon only
+  through this restricted interface. An RCE in guise can do exactly what
+  guise needs to do (run `setup alias …` inside the mailserver container)
+  and nothing else: no starting new containers, no host-path mounts, no
+  daemon reconfiguration, no access to other containers' state.
 - IMAP connection uses TLS. By default the cert is validated against the
   system trust store (`GUISE_IMAP_CAFILE` overrides). Hostname verification
   is off because we reach the mailserver by container name, not by the cert
@@ -86,50 +95,18 @@ Set in the deploying compose file.
   real client IP is used (set `RemoteIPHeader X-Forwarded-For` in your
   reverse proxy and trust only the proxy's IP).
 
-### Hardening the docker socket (recommended)
+### Further hardening (not default)
 
-The default compose snippet mounts `/var/run/docker.sock` directly, giving
-the guise container full Docker API access. Any RCE in guise escalates to
-host root.
-
-For defense-in-depth, front the socket with
-[`tecnativa/docker-socket-proxy`](https://github.com/Tecnativa/docker-socket-proxy)
-and grant only the endpoints guise needs:
-
-```yaml
-  docker-socket-proxy:
-    image: tecnativa/docker-socket-proxy
-    container_name: guise-socket-proxy
-    restart: always
-    environment:
-      CONTAINERS: 1     # GET /containers (used by docker exec)
-      EXEC: 1           # POST /containers/.../exec
-      POST: 1
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    # not exposed to the host; only reachable from the project's docker network
-
-  guise:
-    image: guise:latest
-    environment:
-      DOCKER_HOST: tcp://guise-socket-proxy:2375
-      # … other env vars as before
-    # remove the docker.sock volume and the group_add: ["988"] entry
-    depends_on:
-      - guise-socket-proxy
-      - mailserver
-```
-
-A bug in guise can then only ask the proxy to run `exec` on existing
-containers — not start new containers with host-path mounts, modify
-networks, or read arbitrary container state.
-
-Complementary hardening worth considering:
+Worth considering for production deployments:
 
 - `read_only: true` on the guise container with a tmpfs for `/tmp`. All
   writes guise actually needs are scoped to the volume-mounted `/data` dir.
 - A custom AppArmor or seccomp profile for the guise container.
-- Pinning the `python:3.12-slim` base image to a digest.
+- Pinning `ghcr.io/messelink/guise` to a digest (`@sha256:…`) instead of
+  `:latest` to make supply-chain compromise of the published image more
+  visible.
+- Bind-mount-only the `./guise-data` directory with `:rw,nodev,nosuid` (or
+  similar) for defence-in-depth on the data volume.
 
 ## Deploy
 

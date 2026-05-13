@@ -40,11 +40,14 @@ sidecar inside the mailserver's compose project.
 - Strict shape validation on alias and target before subprocess invocation
 - Generic flash messages on subprocess failures; detail logged server-side
   rather than leaked through the UI
+- **`docker-socket-proxy` sidecar is the default install path** — guise
+  communicates with the host Docker daemon only through a restricted
+  proxy (read-only socket mount, `CONTAINERS` + `EXEC` API endpoints only).
+  An RCE in guise can run `setup alias …` inside mailserver and nothing
+  else.
 
-### Documented (not auto-applied) hardening
+### Documented (not auto-applied) further hardening
 
-- `docker-socket-proxy` in front of the host docker.sock, scoped to
-  `CONTAINERS` + `EXEC` only
 - Read-only container filesystem with a tmpfs for `/tmp`
 - Custom AppArmor / seccomp profile
-- Base image pinning by digest
+- Base image / image-digest pinning instead of `:latest`

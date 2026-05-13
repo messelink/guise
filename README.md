@@ -48,11 +48,25 @@ GitHub Container Registry at `ghcr.io/messelink/guise` for `linux/amd64` and
 
 ## Quickstart
 
-Add guise as a service in your `docker-mailserver` `compose.yaml`, alongside
-the existing `mailserver` service (see `server/README.md` for the full env-var
-reference):
+Add the two services below to your `docker-mailserver` `compose.yaml`, alongside
+the existing `mailserver` service. The `guise-socket-proxy` sidecar restricts
+guise's Docker API access to only the `exec` calls it needs to write aliases —
+an RCE in guise can no longer touch the host Docker daemon directly. See
+`server/README.md` for the trust-boundary rationale.
 
 ```yaml
+  guise-socket-proxy:
+    image: tecnativa/docker-socket-proxy:latest
+    container_name: guise-socket-proxy
+    restart: always
+    environment:
+      CONTAINERS: 1   # allow GET on /containers/*
+      EXEC: 1         # allow POST on /containers/{id}/exec and /exec/{id}/start
+      POST: 1         # allow POST requests in general
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    # not exposed on the host; only reachable from the project's docker network
+
   guise:
     image: ghcr.io/messelink/guise:latest
     container_name: guise
@@ -60,7 +74,6 @@ reference):
     ports: ["127.0.0.1:9100:8000"]
     volumes:
       - ./guise-data:/data
-      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       GUISE_DOMAIN: example.com               # your mail domain
       GUISE_TAG: g-
@@ -70,16 +83,18 @@ reference):
       GUISE_IMAP_PORT: "993"
       DATA_DIR: /data
       SESSION_COOKIE_SECURE: "true"
-    group_add: ["<host docker gid>"]          # e.g. "988"; see `getent group docker`
-    depends_on: [mailserver]
+      DOCKER_HOST: tcp://guise-socket-proxy:2375
+    depends_on:
+      - mailserver
+      - guise-socket-proxy
 ```
 
 Then from your docker-mailserver compose project directory:
 
 ```
 mkdir -p guise-data
-docker compose pull guise
-docker compose up -d guise
+docker compose pull guise guise-socket-proxy
+docker compose up -d guise guise-socket-proxy
 ```
 
 To pin a specific version instead of tracking `:latest`, use
