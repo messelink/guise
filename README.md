@@ -2,6 +2,7 @@
 
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 [![tests](https://github.com/messelink/guise/actions/workflows/tests.yml/badge.svg)](https://github.com/messelink/guise/actions/workflows/tests.yml)
+[![CodeQL](https://github.com/messelink/guise/actions/workflows/codeql.yml/badge.svg)](https://github.com/messelink/guise/actions/workflows/codeql.yml)
 
 > Copyright (C) 2026 Pim Messelink &lt;g-2eebed68-guise@club77.org&gt;
 > Licensed under the GNU Affero General Public License v3.0 or later. See `LICENSE`.
