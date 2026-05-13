@@ -128,6 +128,7 @@ guise listens on `127.0.0.1:9100`. Front it with your existing reverse proxy.
 <VirtualHost *:443 [::]:443>
     ServerName guise.example.com
     ProxyPreserveHost On
+    RequestHeader set X-Forwarded-Proto "https"
     ProxyPass / http://127.0.0.1:9100/
     ProxyPassReverse / http://127.0.0.1:9100/
     SSLEngine on
