@@ -5,6 +5,31 @@ All notable changes to guise are documented here. Format loosely follows
 not yet follow strict semantic versioning — backwards-incompatible changes
 before 1.0 will be called out explicitly.
 
+## [0.2.0] — 2026-05-13
+
+### Added
+
+- Per-row **copy-to-clipboard** button next to each alias in the *Managed by
+  guise* and *Other aliases routing to you* sections. Uses
+  `document.execCommand('copy')` for cross-context reliability.
+
+### Changed
+
+- **`docker-socket-proxy` sidecar is now the default install path** instead
+  of a documented hardening option. New installs following the Quickstart
+  get the restricted Docker-API surface by default — guise communicates
+  with the host Docker daemon only through a sidecar that mounts the
+  socket read-only and exposes only the `CONTAINERS` + `EXEC` API endpoints.
+- README's Apache vhost example sets `RequestHeader set X-Forwarded-Proto
+  "https"` so guise correctly detects HTTPS when behind the proxy.
+- README's Quickstart leads with the prebuilt `ghcr.io/messelink/guise`
+  image. The "build from source" path moves to its own subsection.
+- GitHub Actions versions bumped to releases that support Node 24
+  (`actions/checkout@v6`, `actions/setup-python@v6`,
+  `docker/setup-qemu-action@v4`, `docker/setup-buildx-action@v4`,
+  `docker/login-action@v4`, `docker/metadata-action@v6`,
+  `docker/build-push-action@v7`).
+
 ## [0.1.0] — 2026-05-12
 
 Initial release. A small self-hosted Flask web app for managing
