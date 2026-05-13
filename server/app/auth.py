@@ -47,7 +47,7 @@ def _safe_next_url(raw: str | None, default: str) -> str:
         return default
     if not raw.startswith("/"):
         return default
-    if raw.startswith("//") or raw.startswith("/\\"):
+    if raw.startswith(("//", "/\\")):
         return default
     parsed = urlparse(raw)
     if parsed.scheme or parsed.netloc:
