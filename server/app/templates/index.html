@@ -103,9 +103,18 @@
     ta.style.opacity = '0';
     document.body.appendChild(ta);
     ta.select();
-    try { ta.setSelectionRange(0, ta.value.length); } catch (e) { /* setSelectionRange may not be supported in every browser/element combination; non-fatal — the select() above already covers the common case. */ }
+    try {
+      ta.setSelectionRange(0, ta.value.length);
+    } catch (e) {
+      console.warn('setSelectionRange unavailable:', e);
+    }
     var ok = false;
-    try { ok = document.execCommand('copy'); } catch (e) { /* execCommand can throw in restricted contexts (some sandboxed iframes); leaving ok=false reports a clean copy-failed flash to the user. */ }
+    try {
+      ok = document.execCommand('copy');
+    } catch (e) {
+      console.warn('execCommand copy failed:', e);
+      ok = false;
+    }
     ta.remove();
     return ok;
   }
