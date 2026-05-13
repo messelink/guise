@@ -1,0 +1,161 @@
+# guise HTTP API
+
+**Status**: draft, targeting v0.3.0 (not yet implemented).
+
+## Motivation
+
+External tools — password managers, browser extensions, scripts — need a
+programmatic way to create and manage aliases. The web UI is built for humans;
+this API is for everyone else.
+
+## Compatibility goal
+
+The API implements a subset of the [SimpleLogin REST
+API](https://github.com/simple-login/app/blob/master/docs/api.md) sufficient
+for any client that supports "SimpleLogin self-hosted" to point at guise and
+work without modification. The first proven integration target is Bitwarden's
+**Username Generator → Forwarded email alias → SimpleLogin (self-hosted
+server)**.
+
+guise does not aim to be a drop-in SimpleLogin replacement; only the endpoints
+listed below are implemented.
+
+## Authentication
+
+Each API request must send an `Authentication` header (note the spelling —
+SimpleLogin uses `Authentication`, not `Authorization`). The value is the
+mailbox short-username and IMAP password joined by a colon:
+
+```
+Authentication: alice:s3cret-imap-password
+```
+
+guise splits on the first `:` and verifies via the same IMAP-against-dovecot
+path used by the web login (`_imap_check`). Same auth surface, same denylist,
+same rate limit (`flask-limiter` at 30/min). No new credentials to manage; no
+token store to back up.
+
+**Trade-off**: this places the IMAP password in the caller's configuration
+(e.g. Bitwarden's username-generator settings, which Bitwarden encrypts at
+rest). Functionally equivalent to configuring any other IMAP client with the
+same credential.
+
+If demand emerges for per-API tokens with finer-grained scope, that's a future
+extension (see "Open questions" below).
+
+## Endpoints
+
+### `POST /api/alias/random/new`
+
+Creates a random-prefix alias targeting the authenticated user's mailbox.
+
+**Request body (JSON, all fields optional)**:
+
+```json
+{
+  "hostname": "www.netflix.com",
+  "note": "ignored for now; reserved for future use"
+}
+```
+
+**Response (201 Created)**:
+
+```json
+{
+  "alias": "g-a3f82c11-netflix@example.com",
+  "id": null
+}
+```
+
+The `id` field is present for SimpleLogin response-shape compatibility; guise
+returns `null` because aliases are identified by their address, not by an
+internal ID.
+
+#### Label derivation
+
+If `hostname` is provided, guise auto-labels the alias using the second-level
+domain (via the `tldextract` library, which understands the Public Suffix
+List). Examples:
+
+| `hostname` input | Resulting alias |
+|---|---|
+| `www.netflix.com` | `g-<random>-netflix@<domain>` |
+| `netflix.com` | `g-<random>-netflix@<domain>` |
+| `mail.google.com` | `g-<random>-google@<domain>` |
+| `bank.co.uk` | `g-<random>-bank@<domain>` |
+| `192.168.1.1` (or other) | `g-<random>@<domain>` (no label) |
+
+Slugification: lower-case, `[^a-z0-9]+` → `_`, runs collapsed, trimmed. Same
+rules as the web UI's label field.
+
+Operator can disable auto-labeling per-instance:
+
+```
+GUISE_API_AUTOLABEL=false   # default: true
+```
+
+When disabled, all API-created aliases are unlabeled (`g-<8hex>@<domain>`)
+regardless of `hostname`.
+
+### `GET /api/aliases` *(optional / phase 2)*
+
+Returns aliases routing to the authenticated user.
+
+```json
+{
+  "aliases": [
+    {"alias": "g-a3f82c11-netflix@example.com", "label": "netflix"},
+    {"alias": "g-deadbeef-bank@example.com", "label": "bank"}
+  ]
+}
+```
+
+### `DELETE /api/alias/<address>` *(optional / phase 2)*
+
+Deletes the alias. Same authorization check as the web UI: the alias must
+target the authenticated user.
+
+## Errors
+
+Standard HTTP status codes, JSON body:
+
+| Status | When |
+|---|---|
+| `400 Bad Request` | malformed JSON, invalid hostname shape |
+| `401 Unauthorized` | missing/malformed `Authentication` header |
+| `403 Forbidden` | valid credentials but the user is on `GUISE_DENIED_USERS`, or attempting to delete an alias not targeting them |
+| `429 Too Many Requests` | rate limit (30/min per IP) tripped |
+| `500 Internal Server Error` | `docker exec mailserver setup alias add` failed; detail logged server-side |
+
+Error body shape (loose SimpleLogin compatibility):
+
+```json
+{"error": "human-readable message"}
+```
+
+## Examples (curl)
+
+Create an alias:
+
+```bash
+curl -X POST https://guise.example.com/api/alias/random/new \
+  -H "Authentication: alice:imap-password" \
+  -H "Content-Type: application/json" \
+  -d '{"hostname": "www.netflix.com"}'
+```
+
+→ `{"alias": "g-a3f82c11-netflix@example.com", "id": null}`
+
+List aliases:
+
+```bash
+curl https://guise.example.com/api/aliases \
+  -H "Authentication: alice:imap-password"
+```
+
+## Open questions
+
+- **Per-API tokens.** Should we offer a path where the user generates a guise-side token (a deterministically-derived bearer string signed by `SECRET_KEY`, no DB row needed) for callers that don't want to store the IMAP password? Defer until someone asks.
+- **Audit log labels for API-created aliases.** The web UI logs `ALIAS_CREATED user=X alias=Y ip=Z`. The API path should produce the same log entries, plus a `via=api` field for filtering.
+- **List + delete endpoints.** Phase 2. Bitwarden only needs `create`; everything else is convenience for other tooling.
+- **AnonAddy-compatibility shim.** Bitwarden supports AnonAddy with a similar self-hosted server pattern but a different header (`Authorization: Bearer`). If we ever want both, expose dual auth paths under separate URL prefixes (`/api/v1/...` for SimpleLogin, `/api/anon/...` for AnonAddy). Trivial to add later.
