@@ -11,9 +11,9 @@ RUN apt-get update \
  && apt-get update \
  && apt-get install -y --no-install-recommends docker-ce-cli \
  && rm -rf /var/lib/apt/lists/* \
- && apt-get purge -y --auto-remove gnupg curl
-
-RUN useradd --create-home --shell /usr/sbin/nologin --uid 1000 guise
+ && apt-get purge -y --auto-remove gnupg curl \
+ && useradd --create-home --shell /usr/sbin/nologin --uid 1000 guise \
+ && mkdir /data && chown guise:guise /data
 
 WORKDIR /app
 
@@ -22,7 +22,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app/ ./app/
 
-RUN mkdir /data && chown guise:guise /data
 VOLUME ["/data"]
 
 USER guise
