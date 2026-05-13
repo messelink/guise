@@ -26,6 +26,7 @@
         <li>
           <code>{{ row.local_part }}</code>
           {% if row.label %}<span class="label">{{ row.label }}</span>{% else %}<span class="label muted">no label</span>{% endif %}
+          <button type="button" class="copy" data-copy="{{ row.local_part }}">copy</button>
           <form method="post" action="{{ url_for('main.delete', local_part=row.local_part) }}" class="inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="danger"
@@ -48,6 +49,7 @@
       <li>
         <code>{{ row.local_part }}</code>
         <span class="label muted">unmanaged</span>
+        <button type="button" class="copy" data-copy="{{ row.local_part }}">copy</button>
         <form method="post" action="{{ url_for('main.delete', local_part=row.local_part) }}" class="inline">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="danger"
@@ -75,6 +77,46 @@
   document.querySelectorAll('button[data-confirm]').forEach(function (btn) {
     btn.addEventListener('click', function (e) {
       if (!confirm(btn.dataset.confirm)) e.preventDefault();
+    });
+  });
+
+  // Copy-to-clipboard. Uses document.execCommand('copy') for compatibility:
+  // navigator.clipboard.writeText() is the modern API but has a Firefox Android
+  // quirk where it resolves silently without writing on http://localhost.
+  // execCommand works on http+localhost, https, mobile, and desktop alike
+  // (officially deprecated but no browser has removed it).
+  function flashButton(btn, text, ms) {
+    var orig = btn.textContent;
+    btn.textContent = text;
+    btn.setAttribute('disabled', '');
+    setTimeout(function () {
+      btn.textContent = orig;
+      btn.removeAttribute('disabled');
+    }, ms);
+  }
+  function copyViaExecCommand(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.top = '-9999px';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { ta.setSelectionRange(0, ta.value.length); } catch (e) {}
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    return ok;
+  }
+  document.querySelectorAll('button[data-copy]').forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      if (copyViaExecCommand(btn.dataset.copy)) {
+        flashButton(btn, 'copied', 1500);
+      } else {
+        flashButton(btn, 'copy failed', 2500);
+      }
     });
   });
 })();
