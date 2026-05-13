@@ -103,10 +103,10 @@
     ta.style.opacity = '0';
     document.body.appendChild(ta);
     ta.select();
-    try { ta.setSelectionRange(0, ta.value.length); } catch (e) {}
+    try { ta.setSelectionRange(0, ta.value.length); } catch (e) { /* setSelectionRange may not be supported in every browser/element combination; non-fatal — the select() above already covers the common case. */ }
     var ok = false;
-    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
-    document.body.removeChild(ta);
+    try { ok = document.execCommand('copy'); } catch (e) { /* execCommand can throw in restricted contexts (some sandboxed iframes); leaving ok=false reports a clean copy-failed flash to the user. */ }
+    ta.remove();
     return ok;
   }
   document.querySelectorAll('button[data-copy]').forEach(function (btn) {

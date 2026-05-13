@@ -101,7 +101,8 @@ def _imap_check(username: str, password: str, config: Config) -> bool:
         return True
     except imaplib.IMAP4.error:
         return False
-    except (OSError, ssl.SSLError):
+    except OSError:
+        # ssl.SSLError is a subclass of OSError, so it's covered here too.
         return False
 
 

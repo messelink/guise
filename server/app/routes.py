@@ -6,10 +6,13 @@ from .config import Config
 from .extensions import limiter
 
 
+INDEX_ENDPOINT = "main.index"
+
+
 def register(app: Flask) -> None:
     bp = Blueprint("main", __name__)
 
-    @bp.route("/")
+    @bp.route("/", methods=["GET"])
     @login_required
     def index():
         config: Config = current_app.config["GUISE"]
@@ -38,18 +41,18 @@ def register(app: Flask) -> None:
         raw_label = request.form.get("label", "")
         if len(raw_label) > 80:
             flash("Label too long (max 80 characters).", "error")
-            return redirect(url_for("main.index"))
+            return redirect(url_for(INDEX_ENDPOINT))
         slug = aliases.slugify(raw_label)
         if raw_label and not slug:
             flash("Label has no usable characters after slugifying.", "error")
-            return redirect(url_for("main.index"))
+            return redirect(url_for(INDEX_ENDPOINT))
 
         try:
             existing = aliases.list_aliases(config.mailserver_container)
         except RuntimeError as exc:
             current_app.logger.warning("setup alias list failed during create: %s", exc)
             flash("Could not check existing aliases. Please retry.", "error")
-            return redirect(url_for("main.index"))
+            return redirect(url_for(INDEX_ENDPOINT))
         existing_locals = {alias.split("@", 1)[0] for alias, _ in existing}
 
         for _ in range(20):
@@ -58,7 +61,7 @@ def register(app: Flask) -> None:
                 break
         else:
             flash("Could not generate a unique alias after 20 tries.", "error")
-            return redirect(url_for("main.index"))
+            return redirect(url_for(INDEX_ENDPOINT))
 
         alias_addr = f"{local_part}@{config.domain}"
         try:
@@ -69,13 +72,13 @@ def register(app: Flask) -> None:
                 g.user, alias_addr, request.remote_addr, exc,
             )
             flash("Failed to create alias. Please retry.", "error")
-            return redirect(url_for("main.index"))
+            return redirect(url_for(INDEX_ENDPOINT))
         current_app.logger.info(
             "ALIAS_CREATED user=%s alias=%s ip=%s",
             g.user, alias_addr, request.remote_addr,
         )
         flash(f"Created {alias_addr}", "success")
-        return redirect(url_for("main.index"))
+        return redirect(url_for(INDEX_ENDPOINT))
 
     @bp.route("/aliases/<path:local_part>/delete", methods=["POST"])
     @login_required
@@ -88,11 +91,11 @@ def register(app: Flask) -> None:
         except RuntimeError as exc:
             current_app.logger.warning("setup alias list failed during delete: %s", exc)
             flash("Could not read aliases. Please retry.", "error")
-            return redirect(url_for("main.index"))
+            return redirect(url_for(INDEX_ENDPOINT))
         match = next(((a, t) for a, t in rows if a == local_part), None)
         if not match:
             flash("Alias not found.", "error")
-            return redirect(url_for("main.index"))
+            return redirect(url_for(INDEX_ENDPOINT))
         alias_addr, target = match
         if target != g.target_email:
             current_app.logger.warning(
@@ -108,12 +111,12 @@ def register(app: Flask) -> None:
                 g.user, alias_addr, request.remote_addr, exc,
             )
             flash("Failed to delete alias. Please retry.", "error")
-            return redirect(url_for("main.index"))
+            return redirect(url_for(INDEX_ENDPOINT))
         current_app.logger.info(
             "ALIAS_DELETED user=%s alias=%s ip=%s",
             g.user, alias_addr, request.remote_addr,
         )
         flash(f"Deleted {alias_addr}", "success")
-        return redirect(url_for("main.index"))
+        return redirect(url_for(INDEX_ENDPOINT))
 
     app.register_blueprint(bp)
