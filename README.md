@@ -8,16 +8,9 @@
 > Copyright (C) 2026 Pim Messelink &lt;g-2eebed68-guise@club77.org&gt;
 > Licensed under the GNU Affero General Public License v3.0 or later. See `LICENSE`.
 
-Self-hosted web app for managing per-recipient email aliases on a
-[`docker-mailserver`](https://github.com/docker-mailserver/docker-mailserver)
-instance, without SSH. Generates random alias addresses labeled with the
-service they're for, e.g. `g-a3f82c11-netflix@example.com`, and routes them
-to your real mailbox.
+Self-hosted web app for managing per-recipient email aliases on a [`docker-mailserver`](https://github.com/docker-mailserver/docker-mailserver) instance, without SSH. Generates random alias addresses labeled with the service they're for, e.g. `g-a3f82c11-netflix@example.com`, and routes them to your real mailbox.
 
-Auth piggybacks on the mailserver itself (IMAP), so there's no separate user
-database. Aliases live in `postfix-virtual.cf`, and the embedded label travels
-in the address itself — guise owns no application data of its own beyond a
-regenerable session key.
+Auth piggybacks on the mailserver itself (IMAP), so there's no separate user database. Aliases live in `postfix-virtual.cf`, and the embedded label travels in the address itself — guise owns no application data of its own beyond a regenerable session key.
 
 ## Screenshots
 
@@ -43,18 +36,11 @@ guise/
 └── server/                Python/Flask source for the guise Docker image
 ```
 
-`server/` builds the image; the running deployment is a sidecar service inside
-your `docker-mailserver` compose project. Prebuilt images are published to
-GitHub Container Registry at `ghcr.io/messelink/guise` for `linux/amd64` and
-`linux/arm64`.
+`server/` builds the image; the running deployment is a sidecar service inside your `docker-mailserver` compose project. Prebuilt images are published to GitHub Container Registry at `ghcr.io/messelink/guise` for `linux/amd64` and `linux/arm64`.
 
 ## Quickstart
 
-Add the two services below to your `docker-mailserver` `compose.yaml`, alongside
-the existing `mailserver` service. The `guise-socket-proxy` sidecar restricts
-guise's Docker API access to only the `exec` calls it needs to write aliases —
-an RCE in guise can no longer touch the host Docker daemon directly. See
-`server/README.md` for the trust-boundary rationale.
+Add the two services below to your `docker-mailserver` `compose.yaml`, alongside the existing `mailserver` service. The `guise-socket-proxy` sidecar restricts guise's Docker API access to only the `exec` calls it needs to write aliases — an RCE in guise can no longer touch the host Docker daemon directly. See `server/README.md` for the trust-boundary rationale.
 
 ```yaml
   guise-socket-proxy:
@@ -99,10 +85,7 @@ docker compose pull guise guise-socket-proxy
 docker compose up -d guise guise-socket-proxy
 ```
 
-To pin a specific version instead of tracking `:latest`, use
-`ghcr.io/messelink/guise:0.1.0` (or any tag from the
-[Releases page](https://github.com/messelink/guise/releases)). Upgrades are
-then a `docker compose pull guise && docker compose up -d --force-recreate guise`.
+To pin a specific version instead of tracking `:latest`, use `ghcr.io/messelink/guise:0.1.0` (or any tag from the [Releases page](https://github.com/messelink/guise/releases)). Upgrades are then a `docker compose pull guise && docker compose up -d --force-recreate guise`.
 
 ### Build from source instead
 
@@ -140,8 +123,7 @@ guise listens on `127.0.0.1:9100`. Front it with your existing reverse proxy.
 </VirtualHost>
 ```
 
-Point DNS at the host (A/AAAA or CNAME, depending on your zone), then issue
-the cert with your usual ACME client (e.g. `certbot --apache -d guise.example.com`).
+Point DNS at the host (A/AAAA or CNAME, depending on your zone), then issue the cert with your usual ACME client (e.g. `certbot --apache -d guise.example.com`).
 
 ## SimpleLogin-compatible API
 
@@ -169,11 +151,8 @@ Auto-labeling is opt-out per instance via `GUISE_API_AUTOLABEL=0`. Full request/
 2. Log in with your short mailserver username + password
 3. Dashboard shows two sections:
    - **Managed by guise** — addresses starting with `g-`, with their labels
-   - **Other aliases routing to you** — anything else in `postfix-virtual.cf`
-     pointing to your address (pre-existing aliases). Deleting one of these
-     prompts an extra confirmation.
-4. Type a label, click *Create alias* → fresh `g-<8 hex>-<label>` address
-   appears, ready to copy.
+   - **Other aliases routing to you** — anything else in `postfix-virtual.cf` pointing to your address (pre-existing aliases). Deleting one of these prompts an extra confirmation.
+4. Type a label, click *Create alias* → fresh `g-<8 hex>-<label>` address appears, ready to copy.
 5. Click *delete* on any alias to remove it.
 
 ## Rollback
