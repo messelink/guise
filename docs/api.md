@@ -1,48 +1,30 @@
 # guise HTTP API
 
-**Status**: implemented in v0.3.0 (`POST /api/alias/random/new`).
-List/delete endpoints are still phase 2.
+**Status**: implemented in v0.3.0 (`POST /api/alias/random/new`). List/delete endpoints are still phase 2.
 
 ## Motivation
 
-External tools — password managers, browser extensions, scripts — need a
-programmatic way to create and manage aliases. The web UI is built for humans;
-this API is for everyone else.
+External tools — password managers, browser extensions, scripts — need a programmatic way to create and manage aliases. The web UI is built for humans; this API is for everyone else.
 
 ## Compatibility goal
 
-The API implements a subset of the [SimpleLogin REST
-API](https://github.com/simple-login/app/blob/master/docs/api.md) sufficient
-for any client that supports "SimpleLogin self-hosted" to point at guise and
-work without modification. The first proven integration target is Bitwarden's
-**Username Generator → Forwarded email alias → SimpleLogin (self-hosted
-server)**.
+The API implements a subset of the [SimpleLogin REST API](https://github.com/simple-login/app/blob/master/docs/api.md) sufficient for any client that supports "SimpleLogin self-hosted" to point at guise and work without modification. The first proven integration target is Bitwarden's **Username Generator → Forwarded email alias → SimpleLogin (self-hosted server)**.
 
-guise does not aim to be a drop-in SimpleLogin replacement; only the endpoints
-listed below are implemented.
+guise does not aim to be a drop-in SimpleLogin replacement; only the endpoints listed below are implemented.
 
 ## Authentication
 
-Each API request must send an `Authentication` header (note the spelling —
-SimpleLogin uses `Authentication`, not `Authorization`). The value is the
-mailbox short-username and IMAP password joined by a colon:
+Each API request must send an `Authentication` header (note the spelling — SimpleLogin uses `Authentication`, not `Authorization`). The value is the mailbox short-username and IMAP password joined by a colon:
 
 ```
 Authentication: alice:s3cret-imap-password
 ```
 
-guise splits on the first `:` and verifies via the same IMAP-against-dovecot
-path used by the web login (`_imap_check`). Same auth surface, same denylist,
-same rate limit (`flask-limiter` at 30/min). No new credentials to manage; no
-token store to back up.
+guise splits on the first `:` and verifies via the same IMAP-against-dovecot path used by the web login (`_imap_check`). Same auth surface, same denylist, same rate limit (`flask-limiter` at 30/min). No new credentials to manage; no token store to back up.
 
-**Trade-off**: this places the IMAP password in the caller's configuration
-(e.g. Bitwarden's username-generator settings, which Bitwarden encrypts at
-rest). Functionally equivalent to configuring any other IMAP client with the
-same credential.
+**Trade-off**: this places the IMAP password in the caller's configuration (e.g. Bitwarden's username-generator settings, which Bitwarden encrypts at rest). Functionally equivalent to configuring any other IMAP client with the same credential.
 
-If demand emerges for per-API tokens with finer-grained scope, that's a future
-extension (see "Open questions" below).
+If demand emerges for per-API tokens with finer-grained scope, that's a future extension (see "Open questions" below).
 
 ## Endpoints
 
@@ -51,13 +33,8 @@ extension (see "Open questions" below).
 Creates a random-prefix alias targeting the authenticated user's mailbox.
 
 **Query parameters (optional)**:
-- `hostname` — Bitwarden appends this when the username generator runs in a
-  page/vault-entry context that knows the URL (in-page autofill on a sign-up
-  form, generating inside an existing entry). The standalone popup/Android
-  generator does *not* include it. Despite the name, Bitwarden sends the
-  **full URL**, not just the host (e.g.
-  `?hostname=https://bitwarden.com/go/start-free/`); `tldextract` handles
-  both forms.
+
+- `hostname` — Bitwarden appends this when the username generator runs in a page/vault-entry context that knows the URL (in-page autofill on a sign-up form, generating inside an existing entry). The standalone popup/Android generator does *not* include it. Despite the name, Bitwarden sends the **full URL**, not just the host (e.g. `?hostname=https://bitwarden.com/go/start-free/`); `tldextract` handles both forms.
 
 **Request body (JSON)**:
 
@@ -67,9 +44,7 @@ Creates a random-prefix alias targeting the authenticated user's mailbox.
 }
 ```
 
-Bitwarden sends a `note` field describing the generator origin. guise logs
-it server-side (audit trail) but doesn't use it for the address — `hostname`
-takes precedence for labeling.
+Bitwarden sends a `note` field describing the generator origin. guise logs it server-side (audit trail) but doesn't use it for the address — `hostname` takes precedence for labeling.
 
 **Response (201 Created)**:
 
@@ -79,14 +54,11 @@ takes precedence for labeling.
 }
 ```
 
-Bitwarden reads only the `alias` field; other fields in the response are
-ignored. We return only `alias` to keep the contract minimal.
+Bitwarden reads only the `alias` field; other fields in the response are ignored. We return only `alias` to keep the contract minimal.
 
 #### Label derivation
 
-If `hostname` is provided, guise auto-labels the alias using the second-level
-domain (via the `tldextract` library, which understands the Public Suffix
-List). Examples:
+If `hostname` is provided, guise auto-labels the alias using the second-level domain (via the `tldextract` library, which understands the Public Suffix List). Examples:
 
 | `hostname` input | Resulting alias |
 |---|---|
@@ -97,8 +69,7 @@ List). Examples:
 | `https://bitwarden.com/go/start-free/` | `g-<random>-bitwarden@<domain>` |
 | `192.168.1.1`, `localhost`, `*.local` | `g-<random>@<domain>` (no label) |
 
-Slugification: lower-case, `[^a-z0-9]+` → `_`, runs collapsed, trimmed. Same
-rules as the web UI's label field.
+Slugification: lower-case, `[^a-z0-9]+` → `_`, runs collapsed, trimmed. Same rules as the web UI's label field.
 
 Operator can disable auto-labeling per-instance:
 
@@ -106,8 +77,7 @@ Operator can disable auto-labeling per-instance:
 GUISE_API_AUTOLABEL=false   # default: true
 ```
 
-When disabled, all API-created aliases are unlabeled (`g-<8hex>@<domain>`)
-regardless of `hostname`.
+When disabled, all API-created aliases are unlabeled (`g-<8hex>@<domain>`) regardless of `hostname`.
 
 ### `GET /api/aliases` *(optional / phase 2)*
 
@@ -124,8 +94,7 @@ Returns aliases routing to the authenticated user.
 
 ### `DELETE /api/alias/<address>` *(optional / phase 2)*
 
-Deletes the alias. Same authorization check as the web UI: the alias must
-target the authenticated user.
+Deletes the alias. Same authorization check as the web UI: the alias must target the authenticated user.
 
 ## Errors
 
