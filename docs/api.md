@@ -51,8 +51,13 @@ extension (see "Open questions" below).
 Creates a random-prefix alias targeting the authenticated user's mailbox.
 
 **Query parameters (optional)**:
-- `hostname` — Bitwarden appends this when generating from a vault entry with
-  a URI. Used by guise for auto-labeling. Example: `?hostname=www.netflix.com`.
+- `hostname` — Bitwarden appends this when the username generator runs in a
+  page/vault-entry context that knows the URL (in-page autofill on a sign-up
+  form, generating inside an existing entry). The standalone popup/Android
+  generator does *not* include it. Despite the name, Bitwarden sends the
+  **full URL**, not just the host (e.g.
+  `?hostname=https://bitwarden.com/go/start-free/`); `tldextract` handles
+  both forms.
 
 **Request body (JSON)**:
 
@@ -89,7 +94,8 @@ List). Examples:
 | `netflix.com` | `g-<random>-netflix@<domain>` |
 | `mail.google.com` | `g-<random>-google@<domain>` |
 | `bank.co.uk` | `g-<random>-bank@<domain>` |
-| `192.168.1.1` (or other) | `g-<random>@<domain>` (no label) |
+| `https://bitwarden.com/go/start-free/` | `g-<random>-bitwarden@<domain>` |
+| `192.168.1.1`, `localhost`, `*.local` | `g-<random>@<domain>` (no label) |
 
 Slugification: lower-case, `[^a-z0-9]+` → `_`, runs collapsed, trimmed. Same
 rules as the web UI's label field.
