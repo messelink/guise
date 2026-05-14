@@ -85,7 +85,7 @@ docker compose pull guise guise-socket-proxy
 docker compose up -d guise guise-socket-proxy
 ```
 
-To pin a specific version instead of tracking `:latest`, use `ghcr.io/messelink/guise:0.1.0` (or any tag from the [Releases page](https://github.com/messelink/guise/releases)). Upgrades are then a `docker compose pull guise && docker compose up -d --force-recreate guise`.
+To pin a specific version instead of tracking `:latest`, use `ghcr.io/messelink/guise:0.3.0` (or any tag from the [Releases page](https://github.com/messelink/guise/releases)). Upgrades are then a `docker compose pull guise && docker compose up -d --force-recreate guise`.
 
 ### Build from source instead
 
