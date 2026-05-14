@@ -143,17 +143,25 @@ guise listens on `127.0.0.1:9100`. Front it with your existing reverse proxy.
 Point DNS at the host (A/AAAA or CNAME, depending on your zone), then issue
 the cert with your usual ACME client (e.g. `certbot --apache -d guise.example.com`).
 
-## Bitwarden integration (SimpleLogin-compatible API)
+## SimpleLogin-compatible API
 
-guise exposes a SimpleLogin-compatible endpoint so Bitwarden's
-**Username Generator → Forwarded email alias → SimpleLogin
-(self-hosted server)** can create guise aliases directly from a vault
-entry. Point Bitwarden at `https://guise.example.com` with your mailbox
-short-username and IMAP password joined by `:` as the API key; when you
-generate a username from a vault entry, Bitwarden sends the URI's
-hostname and guise auto-labels the alias (e.g.
-`g-a3f82c11-netflix@example.com` for an entry on `www.netflix.com`).
-Full request/response spec in [`docs/api.md`](docs/api.md).
+guise exposes the subset of the [SimpleLogin REST API](https://github.com/simple-login/app/blob/master/docs/api.md) that password-manager "forwarded email alias" generators rely on. Any client that supports pointing at a *self-hosted* SimpleLogin server should be able to create guise aliases without modification.
+
+Point your client at `https://guise.example.com`; the API key is your mailbox short-username and IMAP password joined by `:` — same auth path as the web UI, no separate token to manage. For example, if your mailbox is `alice@example.com` and your IMAP password is `s3cret-imap-password`, the API key is `alice:s3cret-imap-password`.
+
+**Confirmed working**:
+
+- **Bitwarden** — *Username Generator → Forwarded email alias → SimpleLogin (self-hosted server)*. Browser extension, mobile, desktop. In-page autofill on a sign-up form passes the page URL, which guise uses to auto-label the alias (e.g. `g-a3f82c11-netflix@example.com` for a Netflix signup); the standalone popup generator produces an unlabeled `g-<8hex>@example.com`.
+
+**Theoretically compatible (untested — feedback welcome)**:
+
+- Any other client that exposes a configurable *self-hosted* SimpleLogin server URL and only needs `POST /api/alias/random/new`. This likely includes SimpleLogin's own browser extension in self-hosted mode.
+
+**Currently won't work**:
+
+- Clients pinned to a hosted SimpleLogin instance: 1Password (Watchtower), Proton Pass (Proton-managed SimpleLogin). No user-facing setting points them at a custom server.
+
+Auto-labeling is opt-out per instance via `GUISE_API_AUTOLABEL=0`. Full request/response spec, error codes, and the SimpleLogin subset implemented are in [`docs/api.md`](docs/api.md).
 
 ## User flow
 
