@@ -6,10 +6,10 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from .config import load_config
 from .extensions import limiter
-from . import auth, routes
+from . import api, auth, routes
 
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 
 def _bridge_logger_to_gunicorn(app: Flask) -> None:
@@ -48,4 +48,5 @@ def create_app() -> Flask:
     limiter.init_app(app)
     auth.register(app)
     routes.register(app)
+    api.register(app)
     return app

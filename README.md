@@ -143,6 +143,18 @@ guise listens on `127.0.0.1:9100`. Front it with your existing reverse proxy.
 Point DNS at the host (A/AAAA or CNAME, depending on your zone), then issue
 the cert with your usual ACME client (e.g. `certbot --apache -d guise.example.com`).
 
+## Bitwarden integration (SimpleLogin-compatible API)
+
+guise exposes a SimpleLogin-compatible endpoint so Bitwarden's
+**Username Generator → Forwarded email alias → SimpleLogin
+(self-hosted server)** can create guise aliases directly from a vault
+entry. Point Bitwarden at `https://guise.example.com` with your mailbox
+short-username and IMAP password joined by `:` as the API key; when you
+generate a username from a vault entry, Bitwarden sends the URI's
+hostname and guise auto-labels the alias (e.g.
+`g-a3f82c11-netflix@example.com` for an entry on `www.netflix.com`).
+Full request/response spec in [`docs/api.md`](docs/api.md).
+
 ## User flow
 
 1. Browse to `https://guise.example.com/login`

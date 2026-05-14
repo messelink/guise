@@ -5,6 +5,30 @@ All notable changes to guise are documented here. Format loosely follows
 not yet follow strict semantic versioning — backwards-incompatible changes
 before 1.0 will be called out explicitly.
 
+## [0.3.0] — 2026-05-14
+
+### Added
+
+- **SimpleLogin-compatible HTTP API** at `POST /api/alias/random/new`.
+  The endpoint accepts the same credentials as the web UI (mailbox
+  short-username + IMAP password via the `Authentication` header) and
+  returns `{"alias": "..."}` on success. Implemented for compatibility
+  with Bitwarden's *Forwarded email alias → SimpleLogin (self-hosted
+  server)* username generator; any other client that speaks the same
+  subset works too. Full spec in `docs/api.md`.
+- **Auto-labeling from `hostname` query parameter.** When Bitwarden sends
+  `?hostname=www.netflix.com`, guise produces `g-<random>-netflix@…`
+  using the Public Suffix List (`tldextract`) to extract the registered
+  domain. Operator can disable per-instance with `GUISE_API_AUTOLABEL=0`.
+- `tldextract==5.3.1` (BSD-3-Clause) added as a runtime dependency.
+
+### Security
+
+- API surface is exempt from CSRF (header-auth, no session cookies) but
+  shares the IMAP-against-dovecot auth path, denylist, rate limiter
+  (`30/min`), and audit-log events (`LOGIN_FAILED`/`ALIAS_CREATED`
+  carry a `via=api` marker for filtering).
+
 ## [0.2.0] — 2026-05-13
 
 ### Added
