@@ -1,6 +1,7 @@
 # guise HTTP API
 
-**Status**: draft, targeting v0.3.0 (not yet implemented).
+**Status**: implemented in v0.3.0 (`POST /api/alias/random/new`).
+List/delete endpoints are still phase 2.
 
 ## Motivation
 

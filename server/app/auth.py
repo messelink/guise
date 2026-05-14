@@ -30,8 +30,14 @@ def _csrf_valid(submitted: str | None, expected: str | None) -> bool:
 
 
 def validate_csrf() -> None:
-    """Before-request hook: 400 on unsafe methods with missing/wrong token."""
+    """Before-request hook: 400 on unsafe methods with missing/wrong token.
+
+    Skipped for /api/* — that surface uses header-based auth (no session
+    cookie), so CSRF doesn't apply.
+    """
     if request.method not in UNSAFE_METHODS:
+        return
+    if request.path.startswith("/api/"):
         return
     submitted = request.form.get("csrf_token") or request.headers.get("X-CSRF-Token")
     expected = session.get("csrf_token")
@@ -104,6 +110,21 @@ def _imap_check(username: str, password: str, config: Config) -> bool:
     except OSError:
         # ssl.SSLError is a subclass of OSError, so it's covered here too.
         return False
+
+
+def verify_credentials(username: str, password: str, config: Config) -> bool:
+    """Validate a short username + password against denylist, regex, and IMAP.
+
+    Shared by the web login flow and the API auth path so they accept exactly
+    the same identities.
+    """
+    if not username or not password:
+        return False
+    if not USERNAME_RE.match(username):
+        return False
+    if username in config.denied_users:
+        return False
+    return _imap_check(username, password, config)
 
 
 def login_required(view: Callable) -> Callable:

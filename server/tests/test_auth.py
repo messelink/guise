@@ -17,6 +17,7 @@ def config(tmp_path):
         imap_port=993,
         imap_cafile=None,
         imap_insecure=False,
+        api_autolabel=True,
         data_dir=tmp_path,
         secret_key="test-secret",
         session_cookie_secure=False,
@@ -71,7 +72,8 @@ class TestImapCheck:
             domain="example.com", tag="g-", denied_users=frozenset(),
             mailserver_container="mailserver", imap_host="mailserver",
             imap_port=993, imap_cafile=None, imap_insecure=True,
-            data_dir=tmp_path, secret_key="test", session_cookie_secure=False,
+            api_autolabel=True, data_dir=tmp_path, secret_key="test",
+            session_cookie_secure=False,
         )
         instance = MagicMock()
         instance.__enter__.return_value = instance
