@@ -14,7 +14,6 @@ from .extensions import limiter
 bp = Blueprint("api", __name__, url_prefix="/api")
 
 MAX_ATTEMPTS = 20
-NOTE_LOG_CAP = 120
 
 
 def _parse_authentication_header(value: str) -> tuple[str, str] | None:
@@ -79,12 +78,9 @@ def create_random_alias():
         )
         return jsonify({"error": "could not create alias"}), 500
 
-    body = request.get_json(silent=True) or {}
-    note = str(body.get("note", ""))[:NOTE_LOG_CAP]
-
     current_app.logger.info(
-        "ALIAS_CREATED user=%s alias=%s ip=%s via=api hostname=%s note=%s",
-        username, alias_addr, request.remote_addr, hostname, note,
+        "ALIAS_CREATED user=%s alias=%s ip=%s via=api slug=%s",
+        username, alias_addr, request.remote_addr, slug,
     )
     return jsonify({"alias": alias_addr}), 201
 

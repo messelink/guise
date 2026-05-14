@@ -27,7 +27,7 @@ def _imap_fail(mock_imap):
     return instance
 
 
-def _auth_header(user="alice", password="pw"):
+def _auth_header(user="alice", password="pw"):  # NOSONAR — test fixture, not a real credential
     return {"Authentication": f"{user}:{password}"}
 
 
@@ -95,7 +95,7 @@ class TestCreateRandomAlias:
     @patch("app.auth.imaplib.IMAP4_SSL")
     def test_bad_password(self, mock_imap, client):
         _imap_fail(mock_imap)
-        resp = client.post(URL, headers=_auth_header(password="wrong"))
+        resp = client.post(URL, headers=_auth_header(password="wrong"))  # NOSONAR — test fixture, not a real credential
         assert resp.status_code == 401
 
     def test_denied_user(self, client):
@@ -171,4 +171,4 @@ class TestCreateRandomAlias:
                 json={"note": "test-note"},
             )
         assert any("via=api" in r.message for r in caplog.records)
-        assert any("hostname=netflix.com" in r.message for r in caplog.records)
+        assert any("slug=netflix" in r.message for r in caplog.records)
