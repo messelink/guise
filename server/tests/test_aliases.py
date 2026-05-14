@@ -55,7 +55,7 @@ class TestHostnameToLabel:
         assert aliases.hostname_to_label("my-bank.com") == "my_bank"
 
     def test_ip_address_returns_empty(self):
-        assert aliases.hostname_to_label("192.168.1.1") == ""
+        assert aliases.hostname_to_label("192.168.1.1") == ""  # NOSONAR — test input
 
     def test_empty_returns_empty(self):
         assert aliases.hostname_to_label("") == ""
