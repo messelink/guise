@@ -14,6 +14,7 @@ class Config:
     imap_port: int
     imap_cafile: str | None
     imap_insecure: bool
+    api_autolabel: bool
     data_dir: Path
     secret_key: str
     session_cookie_secure: bool
@@ -61,6 +62,7 @@ def load_config() -> Config:
         imap_port=int(os.environ.get("GUISE_IMAP_PORT", "993")),
         imap_cafile=os.environ.get("GUISE_IMAP_CAFILE") or None,
         imap_insecure=_bool("GUISE_IMAP_INSECURE", False),
+        api_autolabel=_bool("GUISE_API_AUTOLABEL", True),
         data_dir=data_dir,
         secret_key=_load_or_create_secret_key(data_dir),
         session_cookie_secure=_bool("SESSION_COOKIE_SECURE", True),

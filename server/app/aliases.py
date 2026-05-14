@@ -4,6 +4,8 @@ import subprocess
 from dataclasses import dataclass
 from typing import Literal
 
+import tldextract
+
 
 RANDOM_LEN = 8
 RANDOM_RE = re.compile(r"^[a-f0-9]{8}$")
@@ -43,6 +45,26 @@ def slugify(label: str) -> str:
 
 def random_prefix() -> str:
     return secrets.token_hex(RANDOM_LEN // 2)
+
+
+def hostname_to_label(hostname: str) -> str:
+    """Reduce a hostname to a slug suitable for an alias label.
+
+    Uses tldextract (Public Suffix List) to extract the registered domain.
+    Anything without a recognized public suffix (IPs, `localhost`,
+    `*.local`) returns "" so we don't bake noise into the alias.
+    Examples:
+      "www.netflix.com" -> "netflix"
+      "bank.co.uk"      -> "bank"      (multi-segment TLD handled)
+      "mail.google.com" -> "google"
+      "192.168.1.1"     -> ""          (no registered domain)
+    """
+    if not hostname:
+        return ""
+    parsed = tldextract.extract(hostname.strip())
+    if not parsed.suffix or not parsed.domain:
+        return ""
+    return slugify(parsed.domain)
 
 
 def make_local_part(tag: str, slug: str, random: str | None = None) -> str:

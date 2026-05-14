@@ -37,6 +37,36 @@ class TestSlugify:
         assert aliases.slugify("café") == "caf"
 
 
+class TestHostnameToLabel:
+    def test_simple_domain(self):
+        assert aliases.hostname_to_label("netflix.com") == "netflix"
+
+    def test_www_subdomain_stripped(self):
+        assert aliases.hostname_to_label("www.netflix.com") == "netflix"
+
+    def test_deeper_subdomain(self):
+        assert aliases.hostname_to_label("mail.google.com") == "google"
+
+    def test_multi_segment_tld(self):
+        assert aliases.hostname_to_label("bank.co.uk") == "bank"
+
+    def test_hyphen_in_domain_slugified(self):
+        # "my-bank.com" → "my_bank"
+        assert aliases.hostname_to_label("my-bank.com") == "my_bank"
+
+    def test_ip_address_returns_empty(self):
+        assert aliases.hostname_to_label("192.168.1.1") == ""  # NOSONAR — test input
+
+    def test_empty_returns_empty(self):
+        assert aliases.hostname_to_label("") == ""
+
+    def test_whitespace_only_returns_empty(self):
+        assert aliases.hostname_to_label("   ") == ""
+
+    def test_uppercase_lowered(self):
+        assert aliases.hostname_to_label("WWW.NETFLIX.COM") == "netflix"
+
+
 class TestClassify:
     TAG = "g-"
 
