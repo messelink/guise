@@ -1,3 +1,4 @@
+import logging
 from datetime import timedelta
 
 from flask import Flask
@@ -11,8 +12,21 @@ from . import api, auth, routes
 __version__ = "0.3.0"
 
 
+def _bridge_logger_to_gunicorn(app: Flask) -> None:
+    """Make app.logger emit through gunicorn's error log so audit INFO lines
+    (LOGIN, LOGOUT, ALIAS_CREATED, ALIAS_DELETED) reach `docker logs`. Outside
+    gunicorn (pytest, `flask run`) the gunicorn logger has no handlers and this
+    is a no-op.
+    """
+    gunicorn_logger = logging.getLogger("gunicorn.error")
+    if gunicorn_logger.handlers:
+        app.logger.handlers = gunicorn_logger.handlers
+        app.logger.setLevel(gunicorn_logger.level)
+
+
 def create_app() -> Flask:
     app = Flask(__name__)
+    _bridge_logger_to_gunicorn(app)
     # Trust one hop of X-Forwarded-* headers from the reverse proxy so
     # `request.remote_addr` reflects the real client IP (for rate-limiting
     # and audit logging) and `request.is_secure` reflects HTTPS termination
