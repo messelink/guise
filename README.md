@@ -16,11 +16,11 @@ Auth piggybacks on the mailserver itself (IMAP), so there's no separate user dat
 
 ### Login
 
-![Login screen](screenshots/login.jpg)
+<img src="screenshots/login.jpg" alt="Login screen" width="50%">
 
 ### Dashboard
 
-![Dashboard](screenshots/dashboard.jpg)
+<img src="screenshots/dashboard.jpg" alt="Dashboard" width="50%">
 
 ## Repo layout
 
