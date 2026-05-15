@@ -35,8 +35,10 @@ guise/
 ├── CHANGELOG.md
 ├── CONTRIBUTING.md
 ├── SECURITY.md
+├── INSTALL.md             reverse-proxy alternatives (Caddy/Apache/nginx/Traefik)
+├── docs/                  api.md — SimpleLogin-compatible HTTP API spec
 ├── screenshots/           login + dashboard
-├── .github/workflows/     GitHub Actions CI (pytest on push)
+├── .github/workflows/     GitHub Actions CI (pytest, CodeQL, release)
 └── server/                Python/Flask source for the guise Docker image
 ```
 
@@ -44,7 +46,7 @@ guise/
 
 ## Quickstart
 
-Add the two services below to your `docker-mailserver` `compose.yaml`, alongside the existing `mailserver` service. The `guise-socket-proxy` sidecar restricts guise's Docker API access to only the `exec` calls it needs to write aliases — an RCE in guise can no longer touch the host Docker daemon directly. See `server/README.md` for the trust-boundary rationale.
+Add the two services below to your `docker-mailserver` `compose.yaml`, alongside the existing `mailserver` service. The `guise-socket-proxy` sidecar restricts guise's Docker API access to only the container-listing and exec endpoints it needs to write aliases — an RCE in guise can no longer touch the host Docker daemon directly. See `server/README.md` for the trust-boundary rationale.
 
 ```yaml
   guise-socket-proxy:
@@ -102,8 +104,6 @@ make build         # produces local guise:latest
 
 …then use `image: guise:latest` in the compose block above.
 
-guise listens on `127.0.0.1:9100`. Front it with your existing reverse proxy.
-
 ## Reverse proxy
 
 guise listens on `127.0.0.1:9100`. Front it with any reverse proxy that can terminate TLS. The simplest is Caddy:
@@ -151,10 +151,11 @@ Auto-labeling is opt-out per instance via `GUISE_API_AUTOLABEL=0`. Full request/
 ## Rollback
 
 ```
-docker compose stop guise && docker compose rm -f guise
-# remove the guise service block from compose.yaml
+docker compose stop guise guise-socket-proxy
+docker compose rm -f guise guise-socket-proxy
+# remove both service blocks from compose.yaml
 rm -rf guise-data
-docker image rm guise:latest
+docker image rm ghcr.io/messelink/guise:latest tecnativa/docker-socket-proxy:latest
 ```
 
 Mailserver is untouched.
