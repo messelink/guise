@@ -104,30 +104,19 @@ make build         # produces local guise:latest
 
 guise listens on `127.0.0.1:9100`. Front it with your existing reverse proxy.
 
-## Apache reverse-proxy vhost (example)
+## Reverse proxy
 
-```apache
-<VirtualHost *:80 [::]:80>
-    ServerName guise.example.com
-    RewriteEngine On
-    RewriteCond %{HTTPS} off
-    RewriteRule ^ https://%{SERVER_NAME}%{REQUEST_URI} [END,NE,R=permanent]
-</VirtualHost>
+guise listens on `127.0.0.1:9100`. Front it with any reverse proxy that can terminate TLS. The simplest is Caddy:
 
-<VirtualHost *:443 [::]:443>
-    ServerName guise.example.com
-    ProxyPreserveHost On
-    RequestHeader set X-Forwarded-Proto "https"
-    ProxyPass / http://127.0.0.1:9100/
-    ProxyPassReverse / http://127.0.0.1:9100/
-    SSLEngine on
-    SSLCertificateFile /etc/letsencrypt/live/guise.example.com/fullchain.pem
-    SSLCertificateKeyFile /etc/letsencrypt/live/guise.example.com/privkey.pem
-    Include /etc/letsencrypt/options-ssl-apache.conf
-</VirtualHost>
+```Caddyfile
+guise.example.com {
+    reverse_proxy 127.0.0.1:9100
+}
 ```
 
-Point DNS at the host (A/AAAA or CNAME, depending on your zone), then issue the cert with your usual ACME client (e.g. `certbot --apache -d guise.example.com`).
+Caddy auto-provisions and renews a Let's Encrypt certificate. Point DNS at the host and that's the whole config.
+
+For Apache, nginx, Traefik, caddy-docker-proxy, and other variants, see [INSTALL.md](INSTALL.md).
 
 ## SimpleLogin-compatible API
 
