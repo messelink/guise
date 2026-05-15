@@ -20,11 +20,11 @@ A sub-addressed address (e.g. `user+netflix@example.com`) reveals your real mail
 
 ### Login
 
-<img src="screenshots/login.jpg" alt="Login screen" width="50%">
+<img src="screenshots/login.png" alt="Login screen">
 
 ### Dashboard
 
-<img src="screenshots/dashboard.jpg" alt="Dashboard" width="50%">
+<img src="screenshots/dashboard.png" alt="Dashboard">
 
 ## Repo layout
 
