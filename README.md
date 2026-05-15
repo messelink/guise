@@ -46,7 +46,7 @@ guise/
 
 ## Quickstart
 
-Add the two services below to your `docker-mailserver` `compose.yaml`, alongside the existing `mailserver` service. The `guise-socket-proxy` sidecar restricts guise's Docker API access to only the container-listing and exec endpoints it needs to write aliases — an RCE in guise can no longer touch the host Docker daemon directly. See `server/README.md` for the trust-boundary rationale.
+Add the two services below to your `docker-mailserver` `compose.yaml`, alongside the existing `mailserver` service. The `guise-socket-proxy` sidecar restricts guise's Docker API access to only the container-listing and exec endpoints it needs to write aliases — an RCE in guise can no longer touch the host Docker daemon directly. See [`server/README.md`](server/README.md) for the trust-boundary rationale.
 
 ```yaml
   guise-socket-proxy:
@@ -160,4 +160,4 @@ Mailserver is untouched.
 
 ## Development
 
-See `server/README.md` for build/test details.
+See [`server/README.md`](server/README.md) for build/test details.

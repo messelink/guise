@@ -6,7 +6,7 @@ Thanks for your interest in guise.
 
 Open an issue with a clear description and reproduction steps. For features, explain the use case so the trade-off can be weighed against keeping guise small.
 
-For **security issues**, do not open a public issue — see `SECURITY.md`.
+For **security issues**, do not open a public issue — see [`SECURITY.md`](SECURITY.md).
 
 ## Development setup
 
@@ -20,7 +20,7 @@ python -m venv .venv
 
 The unit tests mock `subprocess.run` and `imaplib.IMAP4_SSL` — they do not require a running mailserver, a container runtime, or network access.
 
-For integration testing against a live docker-mailserver instance, build the image (`make build`) and deploy it as a sidecar in your mailserver's compose project. See the top-level `README.md` for the compose snippet.
+For integration testing against a live docker-mailserver instance, build the image (`make build`) and deploy it as a sidecar in your mailserver's compose project. See the top-level [`README.md`](README.md) for the compose snippet.
 
 ## Code style
 

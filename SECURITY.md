@@ -19,6 +19,6 @@ Only the latest tagged release is supported. Older versions receive no security 
 
 ## Hardening notes
 
-For the full security posture, review the "Trust boundaries" section in `server/README.md`. The default install includes a `docker-socket-proxy` sidecar that mediates guise's access to the Docker daemon, scoped to the `CONTAINERS` + `EXEC` API endpoints only — guise itself does not mount the host socket. An RCE in guise can run `setup alias …` inside the mailserver container and nothing else; it cannot start new containers, mount host paths, reconfigure the Docker daemon, or reach other containers' state.
+For the full security posture, review the "Trust boundaries" section in [`server/README.md`](server/README.md). The default install includes a `docker-socket-proxy` sidecar that mediates guise's access to the Docker daemon, scoped to the `CONTAINERS` + `EXEC` API endpoints only — guise itself does not mount the host socket. An RCE in guise can run `setup alias …` inside the mailserver container and nothing else; it cannot start new containers, mount host paths, reconfigure the Docker daemon, or reach other containers' state.
 
 The IMAP TLS connection validates the server certificate by default. The explicit escape hatch is `GUISE_IMAP_INSECURE=1`; use it only in genuinely trusted networks (e.g. an intra-host Docker bridge) and prefer pinning a CA bundle via `GUISE_IMAP_CAFILE` instead.
