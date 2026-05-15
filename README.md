@@ -124,19 +124,9 @@ guise exposes the subset of the [SimpleLogin REST API](https://github.com/simple
 
 Point your client at `https://guise.example.com`; the API key is your mailbox short-username and IMAP password joined by `:` — same auth path as the web UI, no separate token to manage. For example, if your mailbox is `alice@example.com` and your IMAP password is `s3cret-imap-password`, the API key is `alice:s3cret-imap-password`.
 
-**Confirmed working**:
+Bitwarden is the verified-working client (browser extension, mobile, desktop). Any other SimpleLogin client with a self-hosted server URL setting should also work — open an issue if you confirm one. Auto-labeling from the request URL is opt-out per instance via `GUISE_API_AUTOLABEL=0`.
 
-- **Bitwarden** — *Username Generator → Forwarded email alias → SimpleLogin (self-hosted server)*. Browser extension, mobile, desktop. In-page autofill on a sign-up form passes the page URL, which guise uses to auto-label the alias (e.g. `g-a3f82c11-netflix@example.com` for a Netflix signup); the standalone popup generator produces an unlabeled `g-<8hex>@example.com`.
-
-**Theoretically compatible (untested — feedback welcome)**:
-
-- Any other client that exposes a configurable *self-hosted* SimpleLogin server URL and only needs `POST /api/alias/random/new`. This likely includes SimpleLogin's own browser extension in self-hosted mode.
-
-**Currently won't work**:
-
-- Clients pinned to a hosted SimpleLogin instance: 1Password (Watchtower), Proton Pass (Proton-managed SimpleLogin). No user-facing setting points them at a custom server.
-
-Auto-labeling is opt-out per instance via `GUISE_API_AUTOLABEL=0`. Full request/response spec, error codes, and the SimpleLogin subset implemented are in [`docs/api.md`](docs/api.md).
+Full request/response spec, error codes, and the SimpleLogin subset implemented are in [`docs/api.md`](docs/api.md).
 
 ## User flow
 
