@@ -12,6 +12,10 @@ Self-hosted web app for managing per-recipient email aliases on a [`docker-mails
 
 Auth piggybacks on the mailserver itself (IMAP), so there's no separate user database. Aliases live in `postfix-virtual.cf`, and the embedded label travels in the address itself — guise owns no application data of its own beyond a regenerable session key.
 
+## Why random aliases instead of sub-addressing?
+
+A sub-addressed address (e.g. `user+netflix@example.com`) reveals your real mailbox to anyone who reads it. If one service leaks its user list and addresses follow `user+<service>@…`, an attacker can probe `user+<every-other-service>@…` to link your identity across services. Random-prefix aliases break both: `g-a3f82c11-netflix@example.com` reveals nothing about the mailbox and doesn't correlate with `g-5b2e1c8a-bank@example.com`. The embedded label is just operator ergonomics — sub-addressing has "which alias did I use here?" for free, and the label is how guise gets that back.
+
 ## Screenshots
 
 ### Login
