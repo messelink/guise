@@ -8,7 +8,7 @@
 > Copyright (C) 2026 Pim Messelink &lt;g-2eebed68-guise@club77.org&gt;
 > Licensed under the GNU Affero General Public License v3.0 or later. See `LICENSE`.
 
-Self-hosted web app for managing per-recipient email aliases on a [`docker-mailserver`](https://github.com/docker-mailserver/docker-mailserver) instance, without SSH. Generates random alias addresses labeled with the service they're for, e.g. `g-a3f82c11-netflix@example.com`, and routes them to your real mailbox.
+Self-hosted web app for managing per-recipient email aliases on a [`docker-mailserver`](https://github.com/docker-mailserver/docker-mailserver) instance, without SSH. Generates random alias addresses labeled with the service they're for, e.g. `g-a3f82c11-netflix@example.com`, and routes them to your real mailbox. Bitwarden's *Forwarded email alias* generator can create them directly from any sign-up form (via a SimpleLogin-compatible API; see below).
 
 Auth piggybacks on the mailserver itself (IMAP), so there's no separate user database. Aliases live in `postfix-virtual.cf`, and the embedded label travels in the address itself — guise owns no application data of its own beyond a regenerable session key.
 
@@ -130,6 +130,8 @@ Full request/response spec, error codes, and the SimpleLogin subset implemented 
 
 ## User flow
 
+### Via the web UI
+
 1. Browse to `https://guise.example.com/login`
 2. Log in with your short mailserver username + password
 3. Dashboard shows two sections:
@@ -137,6 +139,12 @@ Full request/response spec, error codes, and the SimpleLogin subset implemented 
    - **Other aliases routing to you** — anything else in `postfix-virtual.cf` pointing to your address (pre-existing aliases). Deleting one of these prompts an extra confirmation.
 4. Type a label, click *Create alias* → fresh `g-<8 hex>-<label>` address appears, ready to copy.
 5. Click *delete* on any alias to remove it.
+
+### Via Bitwarden
+
+1. In Bitwarden, configure *Username Generator → Forwarded email alias → SimpleLogin (self-hosted server)*. Server URL: `https://guise.example.com`. API key: `<your-username>:<your-imap-password>` (your mailbox short-username and IMAP password joined by a colon).
+2. On any sign-up form, focus the email/username field. Bitwarden's in-page bubble offers *Generate*: pick *Forwarded email alias* → a fresh `g-<random>-<site>@<domain>` alias appears and gets pasted.
+3. Manage or delete the alias later via the web UI's *Managed by guise* section.
 
 ## Rollback
 
