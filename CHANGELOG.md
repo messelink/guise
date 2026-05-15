@@ -22,7 +22,7 @@ All notable changes to guise are documented here. Format loosely follows [Keep a
 
 ### Changed
 
-- **`docker-socket-proxy` sidecar is now the default install path** instead of a documented hardening option. New installs following the Quickstart get the restricted Docker-API surface by default — guise communicates with the host Docker daemon only through a sidecar that mounts the socket read-only and exposes only the `CONTAINERS` + `EXEC` API endpoints.
+- **`docker-socket-proxy` sidecar is now the default install path** instead of a documented hardening option. New installs following the Quickstart get the restricted Docker-API surface by default — guise communicates with the host Docker daemon only through a sidecar that exposes only the `CONTAINERS` + `EXEC` API endpoints.
 - README's Apache vhost example sets `RequestHeader set X-Forwarded-Proto "https"` so guise correctly detects HTTPS when behind the proxy.
 - README's Quickstart leads with the prebuilt `ghcr.io/messelink/guise` image. The "build from source" path moves to its own subsection.
 - GitHub Actions versions bumped to releases that support Node 24 (`actions/checkout@v6`, `actions/setup-python@v6`, `docker/setup-qemu-action@v4`, `docker/setup-buildx-action@v4`, `docker/login-action@v4`, `docker/metadata-action@v6`, `docker/build-push-action@v7`).
@@ -50,7 +50,7 @@ Initial release. A small self-hosted Flask web app for managing per-recipient em
 - Atomic secret-key creation (`O_EXCL` + mode 0o600)
 - Strict shape validation on alias and target before subprocess invocation
 - Generic flash messages on subprocess failures; detail logged server-side rather than leaked through the UI
-- **`docker-socket-proxy` sidecar is the default install path** — guise communicates with the host Docker daemon only through a restricted proxy (read-only socket mount, `CONTAINERS` + `EXEC` API endpoints only). An RCE in guise can run `setup alias …` inside mailserver and nothing else.
+- **`docker-socket-proxy` sidecar is the default install path** — guise communicates with the host Docker daemon only through a restricted proxy exposing only the `CONTAINERS` + `EXEC` API endpoints. An RCE in guise can run `setup alias …` inside mailserver and nothing else.
 
 ### Documented (not auto-applied) further hardening
 
