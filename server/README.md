@@ -77,4 +77,4 @@ Worth considering for production deployments:
 
 ## Deploy
 
-See the top-level `README.md`.
+See the top-level [`README.md`](../README.md).
