@@ -35,7 +35,6 @@ guise/
 ├── CHANGELOG.md
 ├── CONTRIBUTING.md
 ├── SECURITY.md
-├── INSTALL.md             reverse-proxy alternatives (Caddy/Apache/nginx/Traefik)
 ├── docs/                  api.md — SimpleLogin-compatible HTTP API spec
 ├── screenshots/           login + dashboard
 ├── .github/workflows/     GitHub Actions CI (pytest, CodeQL, release)
@@ -81,6 +80,36 @@ Add the two services below to your `docker-mailserver` `compose.yaml`, alongside
     depends_on:
       - mailserver
       - guise-socket-proxy
+
+  # ----- OPTIONAL Caddy reverse-proxy sidecar -----
+  # Uncomment this service plus the top-level `volumes:` and `configs:`
+  # blocks below if you don't already have a reverse proxy on this host.
+  # Caddy auto-provisions a Let's Encrypt cert for guise.example.com,
+  # redirects HTTP → HTTPS, and forwards to guise over the docker network.
+  #
+  # reverse-proxy:
+  #   image: caddy:2-alpine
+  #   container_name: guise-reverse-proxy
+  #   restart: always
+  #   ports: ["80:80", "443:443"]
+  #   volumes:
+  #     - caddy-data:/data
+  #   configs:
+  #     - source: caddy-config
+  #       target: /etc/caddy/Caddyfile
+  #   depends_on:
+  #     - guise
+
+# Uncomment together with the reverse-proxy service above:
+# volumes:
+#   caddy-data:
+#
+# configs:
+#   caddy-config:
+#     content: |
+#       guise.example.com {
+#         reverse_proxy guise:8000
+#       }
 ```
 
 Then from your docker-mailserver compose project directory:
@@ -106,7 +135,9 @@ make build         # produces local guise:latest
 
 ## Reverse proxy
 
-guise listens on `127.0.0.1:9100`. Front it with any reverse proxy that can terminate TLS. The simplest is Caddy:
+guise listens on container port `8000`, mapped to `127.0.0.1:9100` on the host by default. Anything that can terminate TLS and forward to it works.
+
+If you already have a reverse proxy **on the host** (system Apache, Caddy, nginx, …), point it at `127.0.0.1:9100`. The simplest Caddyfile entry:
 
 ```Caddyfile
 guise.example.com {
@@ -114,9 +145,11 @@ guise.example.com {
 }
 ```
 
-Caddy auto-provisions and renews a Let's Encrypt certificate. Point DNS at the host and that's the whole config.
+If you have an existing reverse-proxy **container** on the same compose project, point it at `guise:8000` directly (docker-network DNS), bypassing the host-port mapping.
 
-For Apache, nginx, Traefik, caddy-docker-proxy, and other variants, see [INSTALL.md](INSTALL.md).
+If you don't already have any reverse proxy, the compose snippet above includes a commented-out `reverse-proxy` Caddy sidecar — uncomment it and the related top-level `volumes:` and `configs:` blocks for a one-step install with auto-provisioned Let's Encrypt certificates.
+
+**Header trust**: guise enables `ProxyFix` (`x_for=1, x_proto=1, x_host=1`) so `request.remote_addr` reflects the real client IP from `X-Forwarded-For` and `request.is_secure` reflects HTTPS termination at the proxy. This is correct only if guise is reached exclusively through the reverse proxy. If guise is also reachable directly (e.g. you bind it to `0.0.0.0:9100`), a malicious client can spoof those headers — keep the bind on `127.0.0.1` and front everything through the proxy.
 
 ## SimpleLogin-compatible API
 
