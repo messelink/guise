@@ -26,6 +26,10 @@ A sub-addressed address (e.g. `user+netflix@example.com`) reveals your real mail
 
 <img src="screenshots/dashboard.png" alt="Dashboard">
 
+### Bitwarden integration
+
+<img src="screenshots/bitwarden.png" alt="Bitwarden's Forwarded email alias generator creating a guise alias">
+
 ## Repo layout
 
 ```
