@@ -19,6 +19,10 @@ Only the latest tagged release is supported. Older versions receive no security 
 
 ## Hardening notes
 
-For the full security posture, review the "Trust boundaries" section in [`server/README.md`](server/README.md). The default install includes a `docker-socket-proxy` sidecar that mediates guise's access to the Docker daemon, scoped to the `CONTAINERS` + `EXEC` API endpoints only — guise itself does not mount the host socket. An RCE in guise can run `setup alias …` inside the mailserver container and nothing else; it cannot start new containers, mount host paths, reconfigure the Docker daemon, or reach other containers' state.
+For the full security posture, review the "Trust boundaries" section in [`server/README.md`](server/README.md). The default install includes a socket-proxy sidecar ([`wollomatic/socket-proxy`](https://github.com/wollomatic/socket-proxy)) that mediates guise's access to the Docker daemon. guise itself does not mount the host socket. The proxy allows only the five API calls needed to `docker exec` into the mailserver container. An RCE in guise cannot create or start containers, mount host paths, or exec into any other container.
+
+**What is still exposed:** the Docker API cannot restrict which *command* an exec runs. An RCE in guise can therefore run arbitrary commands as root inside the mailserver container, which means all stored mail, the account password hashes, and anything else mounted into that container. Removing this residual risk is tracked in [#11](https://github.com/messelink/guise/issues/11).
+
+Releases up to and including 0.3.1 documented a `tecnativa/docker-socket-proxy` config (`CONTAINERS=1`, `EXEC=1`, `POST=1`) that did **not** provide this isolation. That config permits `POST /containers/create`, so an RCE in guise could start a privileged container and gain root on the host. If you installed from those instructions, replace the proxy block with the current one from the [README](README.md#quickstart).
 
 The IMAP TLS connection validates the server certificate by default. The explicit escape hatch is `GUISE_IMAP_INSECURE=1`; use it only in genuinely trusted networks (e.g. an intra-host Docker bridge) and prefer pinning a CA bundle via `GUISE_IMAP_CAFILE` instead.

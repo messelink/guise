@@ -49,17 +49,33 @@ guise/
 
 ## Quickstart
 
-Add the two services below to your `docker-mailserver` `compose.yaml`, alongside the existing `mailserver` service. The `guise-socket-proxy` sidecar restricts guise's Docker API access to only the container-listing and exec endpoints it needs to write aliases — an RCE in guise can no longer touch the host Docker daemon directly. See [`server/README.md`](server/README.md) for the trust-boundary rationale.
+Add the two services below to your `docker-mailserver` `compose.yaml`, alongside the existing `mailserver` service. The `guise-socket-proxy` sidecar ([`wollomatic/socket-proxy`](https://github.com/wollomatic/socket-proxy)) allows exactly the five Docker API calls that `docker exec mailserver setup alias …` makes, only against the `mailserver` container, and only from the `guise` container. Everything else (creating containers, exec into other containers, images, volumes, daemon info) gets a 403. guise never mounts the host socket. See [`server/README.md`](server/README.md) for what this does and does not protect against.
+
+Two values in the proxy block are specific to your host. Set `user:` to `65534:<gid>`, where `<gid>` is the group of your Docker socket (`stat -c %g /var/run/docker.sock`). If your mailserver container is not named `mailserver`, change it in the two allowlist lines too; they must match `GUISE_MAILSERVER_CONTAINER`.
 
 ```yaml
   guise-socket-proxy:
-    image: tecnativa/docker-socket-proxy:latest
+    # Pin to a digest you have verified (cosign key: github.com/wollomatic/socket-proxy/blob/main/cosign.pub)
+    image: wollomatic/socket-proxy:1.13.1
     container_name: guise-socket-proxy
     restart: always
-    environment:
-      CONTAINERS: 1   # allow GET on /containers/*
-      EXEC: 1         # allow POST on /containers/{id}/exec and /exec/{id}/start
-      POST: 1         # allow POST requests in general
+    user: "65534:999"   # 65534 = nobody; 999 = example, use the gid of /var/run/docker.sock on YOUR host
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges]
+    mem_limit: 64m
+    command:
+      - -listenip=0.0.0.0
+      - -allowfrom=guise            # only the guise container may connect
+      # One flag per pattern. The proxy anchors each as ^...$; don't combine with `|`.
+      - -allowHEAD=/_ping
+      - -allowGET=/_ping
+      - -allowGET=/v1\.[0-9]+/containers/mailserver/json
+      - -allowGET=/v1\.[0-9]+/exec/[0-9a-f]{64}/json
+      - -allowPOST=/v1\.[0-9]+/containers/mailserver/exec
+      - -allowPOST=/v1\.[0-9]+/exec/[0-9a-f]{64}/start
+      - -watchdoginterval=300
+      - -stoponwatchdog
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     # not exposed on the host; only reachable from the project's docker network
@@ -188,7 +204,7 @@ docker compose stop guise guise-socket-proxy
 docker compose rm -f guise guise-socket-proxy
 # remove both service blocks from compose.yaml
 rm -rf guise-data
-docker image rm ghcr.io/messelink/guise:latest tecnativa/docker-socket-proxy:latest
+docker image rm ghcr.io/messelink/guise:latest wollomatic/socket-proxy:1.13.1
 ```
 
 Mailserver is untouched.

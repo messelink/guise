@@ -2,6 +2,12 @@
 
 All notable changes to guise are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The project does not yet follow strict semantic versioning — backwards-incompatible changes before 1.0 will be called out explicitly.
 
+## [Unreleased]
+
+### Security
+
+- **Replaced the documented `tecnativa/docker-socket-proxy` config, which allowed host root from an RCE in guise** ([#11](https://github.com/messelink/guise/issues/11)). `CONTAINERS=1` + `POST=1` permits `POST /containers/create` (and start/kill/delete), so an attacker with code execution in guise could start a privileged container with the host filesystem mounted. The earlier statements in this changelog, `SECURITY.md` and `server/README.md` that an RCE could do "nothing else" were wrong. The Quickstart now uses `wollomatic/socket-proxy` with an anchored allowlist of exactly the five calls `docker exec` needs, restricted to the mailserver container and the guise client. Residual risk: an RCE in guise can still run commands as root inside the mailserver container. **Existing installs: replace your `guise-socket-proxy` block with the one in the README and set `user:` to your socket's gid.** No guise image change.
+
 ## [0.3.1] — 2026-06-19
 
 ### Security
