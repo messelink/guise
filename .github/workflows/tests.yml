@@ -15,6 +15,10 @@ on:
   pull_request:
     branches: [main]
 
+# Read-only token: the job only checks out code and runs tests.
+permissions:
+  contents: read
+
 jobs:
   pytest:
     runs-on: ubuntu-latest

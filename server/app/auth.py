@@ -55,6 +55,10 @@ def _safe_next_url(raw: str | None, default: str) -> str:
         return default
     if raw.startswith(("//", "/\\")):
         return default
+    # Control characters (CR/LF, tab, DEL) make Werkzeug refuse to build the
+    # Location header, which surfaced as a 500 after a successful login.
+    if any(ord(c) < 0x20 or ord(c) == 0x7F for c in raw):
+        return default
     parsed = urlparse(raw)
     if parsed.scheme or parsed.netloc:
         return default
@@ -158,13 +162,17 @@ def register(app: Flask) -> None:
                 )
             elif not USERNAME_RE.match(username):
                 flash("Invalid username.", "error")
+            # Before the denylist check: otherwise an empty password tells a
+            # denied user ("Login failed.") apart from everyone else.
+            elif not password:
+                flash("Password required.", "error")
             elif username in config.denied_users:
                 current_app.logger.warning(
                     "LOGIN_DENIED user=%s ip=%s", username, request.remote_addr,
                 )
-                flash("This account is not permitted to use guise.", "error")
-            elif not password:
-                flash("Password required.", "error")
+                # Same message as a wrong password, so the response doesn't
+                # reveal who is on the denylist. The log keeps the reason.
+                flash("Login failed.", "error")
             elif _imap_check(username, password, config):
                 session.clear()
                 session["user"] = username
