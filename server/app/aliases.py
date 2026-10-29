@@ -14,6 +14,13 @@ _SLUG_REPLACE = re.compile(r"[^a-z0-9]+")
 _SLUG_COLLAPSE = re.compile(r"_+")
 EMAIL_RE = re.compile(r"^[a-z0-9][a-z0-9._+-]*@[a-z0-9][a-z0-9.-]*$")
 
+# Use only the Public Suffix List snapshot bundled in the (hash-locked)
+# tldextract wheel. The default extractor downloads the live list from
+# publicsuffix.org / GitHub at first use and caches it on disk, so the
+# list would be unverified, fetched at runtime, and need egress. The
+# snapshot refreshes whenever tldextract is bumped.
+_EXTRACT = tldextract.TLDExtract(suffix_list_urls=(), cache_dir=None)
+
 
 Kind = Literal["managed_labeled", "managed_unlabeled", "unmanaged"]
 
@@ -50,7 +57,7 @@ def random_prefix() -> str:
 def hostname_to_label(hostname: str) -> str:
     """Reduce a hostname to a slug suitable for an alias label.
 
-    Uses tldextract (Public Suffix List) to extract the registered domain.
+    Uses tldextract (bundled Public Suffix List snapshot) to extract the registered domain.
     Anything without a recognized public suffix (IPs, `localhost`,
     `*.local`) returns "" so we don't bake noise into the alias.
     Examples:
@@ -61,7 +68,7 @@ def hostname_to_label(hostname: str) -> str:
     """
     if not hostname:
         return ""
-    parsed = tldextract.extract(hostname.strip())
+    parsed = _EXTRACT(hostname.strip())
     if not parsed.suffix or not parsed.domain:
         return ""
     return slugify(parsed.domain)
