@@ -5,7 +5,7 @@ Flask + gunicorn web app for managing [`docker-mailserver`](https://github.com/d
 ## Architecture
 
 - **Auth**: short username + password is checked by connecting to dovecot over IMAPS (`mailserver:993`). No password store of our own. Failed logins go through dovecot's fail2ban jail.
-- **Alias CRUD**: `docker exec mailserver setup alias add/del/list` via the `docker-socket-proxy` sidecar's restricted Docker API. The mailserver container is the source of truth.
+- **Alias CRUD**: `docker exec mailserver setup alias add/del/list` via the socket-proxy sidecar's allowlisted Docker API. The mailserver container is the source of truth.
 - **HTTP API**: `POST /api/alias/random/new` accepts a SimpleLogin-style `Authentication: user:password` header, runs the same IMAP auth + denylist as the web UI, and creates an alias targeting the authenticated mailbox. CSRF-exempt (header-auth, no session). Optional `?hostname=` query parameter triggers PSL-aware auto-labelling. Spec in [`../docs/api.md`](../docs/api.md).
 - **State guise owns**: only `/data/secret_key` (Flask session signing key, regenerated on first start). Wiping `guise-data/` and restarting is a clean reset — no user data is lost because no user data is stored.
 - **Alias naming**: `<GUISE_TAG><8 hex>[-<slug>]@<GUISE_DOMAIN>`. Default tag `g-`. The tag is how guise identifies its own aliases versus legacy ones in `postfix-virtual.cf`.
@@ -86,7 +86,12 @@ Set in the deploying compose file.
 
 ## Trust boundaries
 
-- **Docker API access is mediated by a `docker-socket-proxy` sidecar** (`tecnativa/docker-socket-proxy`), included in the default install. The proxy bind-mounts `/var/run/docker.sock` and exposes only the `CONTAINERS` + `EXEC` API endpoints over `tcp://guise-socket-proxy:2375` on the project's internal Docker network — never on the host or the internet. The endpoint allowlist is what scopes the surface; the `:ro` flag on the bind mount is file-level defence in depth, not an API restriction. guise itself does not mount the host socket, is not a member of the host `docker` group, and is connected to the Docker daemon only through this restricted interface. An RCE in guise can do exactly what guise needs to do (run `setup alias …` inside the mailserver container) and nothing else: no starting new containers, no host-path mounts, no daemon reconfiguration, no access to other containers' state.
+- **Docker API access is mediated by a socket-proxy sidecar** ([`wollomatic/socket-proxy`](https://github.com/wollomatic/socket-proxy)), included in the default install. The proxy bind-mounts `/var/run/docker.sock` and listens on `tcp://guise-socket-proxy:2375` on the project's internal Docker network only, never on the host or the internet. guise does not mount the host socket and is not in the host `docker` group. The proxy enforces three things:
+  - **A per-method path allowlist** anchored with `^…$`. It permits exactly the calls `docker exec <mailserver> setup alias …` makes: `HEAD`/`GET /_ping`, `GET /containers/<mailserver>/json`, `POST /containers/<mailserver>/exec`, `POST /exec/<id>/start` and `GET /exec/<id>/json`. Every other path or method is refused (403/405). That includes `/containers/create`, exec into any other container, start/kill/delete, images, volumes and `/info`.
+  - **A client allowlist:** only the `guise` container may connect.
+  - **A hardened proxy container:** read-only, no capabilities, `no-new-privileges`, unprivileged uid with the socket's group.
+- **Residual risk:** the proxy filters paths, not request bodies, so it cannot restrict the exec *command*. An RCE in guise can run arbitrary commands as root inside the mailserver container: read all mail, read password hashes, and alter mailserver config. It cannot reach the host or other containers through the proxy. Whether a `Privileged: true` exec inside the mailserver could break out further has not been assessed. A follow-up that removes Docker access from guise entirely is tracked in [#11](https://github.com/messelink/guise/issues/11).
+- **Do not use `tecnativa/docker-socket-proxy` with `CONTAINERS=1` + `POST=1`.** That was the documented config up to 0.3.1. Its path rule is an unanchored prefix match (`^/containers` matches `/containers/create`) and `POST=1` unlocks every non-GET method, so it gives an RCE in guise host root.
 - IMAP connection uses TLS. By default the cert is validated against the system trust store (`GUISE_IMAP_CAFILE` overrides). Hostname verification is off because we reach the mailserver by container name, not by the cert CN. `GUISE_IMAP_INSECURE=1` is the explicit escape hatch for self-signed or testing setups.
 - Login validation happens at dovecot. fail2ban-postfix and fail2ban-dovecot jails in the mailserver container catch brute force.
 - App-level rate limit (`flask-limiter`) caps `/login` at 20/min, `POST /aliases` at 30/min, and `POST /api/alias/random/new` at 30/min per client IP. `ProxyFix` is enabled so the real client IP is used (set `RemoteIPHeader X-Forwarded-For` in your reverse proxy and trust only the proxy's IP).
@@ -98,7 +103,7 @@ Worth considering for production deployments:
 
 - `read_only: true` on the guise container with a tmpfs for `/tmp`. All writes guise actually needs are scoped to the volume-mounted `/data` dir.
 - A custom AppArmor or seccomp profile for the guise container.
-- Pinning `ghcr.io/messelink/guise` to a digest (`@sha256:…`) instead of `:latest` to make supply-chain compromise of the published image more visible.
+- Pinning `ghcr.io/messelink/guise` to a digest (`@sha256:…`) instead of `:latest` to make supply-chain compromise of the published image more visible. Do the same for `wollomatic/socket-proxy`. It holds the Docker socket, so it is the most sensitive image in the stack. Its releases are cosign-signed: `cosign verify --key cosign.pub wollomatic/socket-proxy@sha256:…`, using the key from its repo.
 - Bind-mount-only the `./guise-data` directory with `:rw,nodev,nosuid` (or similar) for defence-in-depth on the data volume.
 
 ## Deploy
