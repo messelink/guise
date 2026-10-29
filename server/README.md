@@ -44,7 +44,7 @@ make build           # docker build -t guise:latest .
 
 ```bash
 python -m venv .venv
-.venv/bin/pip install -r requirements.txt pytest
+.venv/bin/pip install -r requirements.txt -r requirements-dev.txt
 .venv/bin/python -m pytest tests/ -q
 ```
 
