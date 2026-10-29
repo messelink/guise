@@ -14,7 +14,7 @@ For **security issues**, do not open a public issue — see [`SECURITY.md`](SECU
 git clone <your fork>
 cd guise/server
 python -m venv .venv
-.venv/bin/pip install -r requirements.txt -r requirements-dev.txt
+.venv/bin/pip install --require-hashes -r requirements-dev.txt
 .venv/bin/python -m pytest tests/ -q
 ```
 
