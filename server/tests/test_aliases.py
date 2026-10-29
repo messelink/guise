@@ -1,3 +1,5 @@
+import socket
+
 from app import aliases
 
 
@@ -65,6 +67,21 @@ class TestHostnameToLabel:
 
     def test_uppercase_lowered(self):
         assert aliases.hostname_to_label("WWW.NETFLIX.COM") == "netflix"
+
+    def test_full_url_accepted(self):
+        # Bitwarden sends the full URL in ?hostname=
+        assert aliases.hostname_to_label("https://bitwarden.com/go/start-free/") == "bitwarden"
+
+    def test_uses_bundled_snapshot_without_network(self, monkeypatch):
+        # Force a fresh load of the suffix list with all sockets refused:
+        # the bundled snapshot must suffice, nothing fetched or cached.
+        def no_network(*_args, **_kwargs):
+            raise AssertionError("tldextract tried to reach the network")
+
+        monkeypatch.setattr(socket.socket, "connect", no_network)
+        monkeypatch.setattr(aliases._EXTRACT, "_extractor", None)
+        assert aliases.hostname_to_label("bank.co.uk") == "bank"
+        assert aliases._EXTRACT.suffix_list_urls == ()
 
 
 class TestClassify:

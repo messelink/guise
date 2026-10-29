@@ -58,7 +58,7 @@ Bitwarden reads only the `alias` field; other fields in the response are ignored
 
 #### Label derivation
 
-If `hostname` is provided, guise auto-labels the alias using the second-level domain (via the `tldextract` library, which understands the Public Suffix List). Examples:
+If `hostname` is provided, guise auto-labels the alias using the second-level domain (via the `tldextract` library and the Public Suffix List snapshot bundled with it; guise never downloads the list at runtime). Examples:
 
 | `hostname` input | Resulting alias |
 |---|---|
