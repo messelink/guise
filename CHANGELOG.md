@@ -2,6 +2,12 @@
 
 All notable changes to guise are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The project does not yet follow strict semantic versioning — backwards-incompatible changes before 1.0 will be called out explicitly.
 
+## [Unreleased]
+
+### Security
+
+- **Python dependencies are hash-locked** (#13). `requirements.txt` is now a `pip-compile --generate-hashes` lockfile covering every transitive dependency, generated from `requirements.in`; the image build and CI install with `--require-hashes` and wheels only. The `python:3.12-slim` base image is pinned to a digest. Dependabot now tracks the `pip` and `docker` ecosystems. Contributors: install test deps from `requirements-dev.txt`.
+
 ## [0.3.1] — 2026-06-19
 
 ### Security

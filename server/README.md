@@ -16,7 +16,10 @@ Flask + gunicorn web app for managing [`docker-mailserver`](https://github.com/d
 server/
 ├── Dockerfile             python:3.12-slim + docker-ce-cli
 ├── Makefile               make build / make test
-├── requirements.txt       flask, flask-limiter, gunicorn, tldextract
+├── requirements.in        direct runtime deps: flask, flask-limiter, gunicorn, tldextract
+├── requirements.txt       hash-locked runtime lock (pip-compile output; installed by the image)
+├── requirements-dev.in    requirements.in + pytest
+├── requirements-dev.txt   hash-locked test lock (installed by CI)
 ├── app/
 │   ├── __init__.py        Flask factory, ProxyFix, logger bridge
 │   ├── config.py          env-var loading, secret_key bootstrap
@@ -44,11 +47,23 @@ make build           # docker build -t guise:latest .
 
 ```bash
 python -m venv .venv
-.venv/bin/pip install -r requirements.txt pytest
+.venv/bin/pip install --require-hashes -r requirements-dev.txt
 .venv/bin/python -m pytest tests/ -q
 ```
 
 Tests mock `subprocess.run` and `imaplib.IMAP4_SSL` — no containers, no network.
+
+## Dependencies
+
+Direct dependencies are pinned in `requirements.in` (runtime) and `requirements-dev.in` (adds pytest). The `.txt` files are generated, hash-locked lockfiles: every package, transitive ones included, is pinned with its sha256, and both the image build and CI install them with `--require-hashes`. Don't edit the `.txt` files by hand. To change a dependency, edit the `.in` file and re-lock with Python 3.12 (the image's version):
+
+```bash
+pip install pip-tools
+pip-compile --generate-hashes --strip-extras --allow-unsafe -o requirements.txt requirements.in
+pip-compile --generate-hashes --strip-extras --allow-unsafe -o requirements-dev.txt requirements-dev.in
+```
+
+Dependabot proposes weekly bumps for both lockfiles and for the digest-pinned base image.
 
 ## Configuration (env vars)
 
