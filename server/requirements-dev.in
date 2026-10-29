@@ -1,0 +1,4 @@
+# Test-only dependencies. Runtime deps come from requirements.in, so the
+# CI lock is a superset of the image's.
+-r requirements.in
+pytest==9.2.0
