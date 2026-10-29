@@ -9,14 +9,11 @@ on:
       - 'screenshots/**'
       - 'LICENSE'
       - '.gitignore'
+  # No paths-ignore on pull_request: this check is required by the main
+  # ruleset, and a path-filtered (skipped) workflow never reports, leaving
+  # docs-only PRs blocked on "Waiting for status to be reported".
   pull_request:
     branches: [main]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - 'screenshots/**'
-      - 'LICENSE'
-      - '.gitignore'
 
 jobs:
   pytest:
