@@ -7,7 +7,7 @@ Flask + gunicorn web app for managing [`docker-mailserver`](https://github.com/d
 - **Auth**: short username + password is checked by connecting to dovecot over IMAPS (`mailserver:993`). No password store of our own. Failed logins are throttled per username by guise itself (see Trust boundaries), because dovecot sees every login as coming from guise's container IP.
 - **Alias CRUD**: `docker exec mailserver setup alias add/del/list` via the socket-proxy sidecar's allowlisted Docker API. The mailserver container is the source of truth.
 - **HTTP API**: `POST /api/alias/random/new` accepts a SimpleLogin-style `Authentication: user:password` header, runs the same IMAP auth + denylist as the web UI, and creates an alias targeting the authenticated mailbox. CSRF-exempt (header-auth, no session). Optional `?hostname=` query parameter triggers PSL-aware auto-labelling. Spec in [`../docs/api.md`](../docs/api.md).
-- **State guise owns**: only `/data/secret_key` (Flask session signing key, regenerated on first start). Wiping `guise-data/` and restarting is a clean reset — no user data is lost because no user data is stored.
+- **State guise owns**: only `/data/secret_key` (Flask session signing key, regenerated on first start). Wiping `guise-data/` and restarting is a clean reset — no user data is lost because no user data is stored. Login sessions and the login backoff live in memory only, so a restart logs everyone out.
 - **Alias naming**: `<GUISE_TAG><8 hex>[-<slug>]@<GUISE_DOMAIN>`. Default tag `g-`. The tag is how guise identifies its own aliases versus legacy ones in `postfix-virtual.cf`.
 
 ## Layout
@@ -28,13 +28,15 @@ server/
 │   ├── api.py             SimpleLogin-compatible HTTP API
 │   ├── routes.py          dashboard + create + delete
 │   ├── extensions.py      flask-limiter singleton
+│   ├── sessions.py        server-side session registry (revocation, 12 h lifetime)
 │   ├── templates/{base,login,index}.html
 │   └── static/{style.css,favicon.svg}
 └── tests/
     ├── conftest.py        pytest fixtures (Flask test client)
     ├── test_aliases.py
     ├── test_api.py
-    └── test_auth.py
+    ├── test_auth.py
+    └── test_sessions.py
 ```
 
 ## Build
@@ -95,7 +97,8 @@ Set in the deploying compose file.
 - IMAP connection uses TLS. By default the cert is validated against the system trust store (`GUISE_IMAP_CAFILE` overrides). Hostname verification is off because we reach the mailserver by container name, not by the cert CN. `GUISE_IMAP_INSECURE=1` is the explicit escape hatch for self-signed or testing setups.
 - Login validation happens at dovecot, but the mailserver's fail2ban can't stop brute force through guise: every IMAP login arrives from guise's container IP, which docker-mailserver's default `ignoreip` (`172.16.0.0/12`) whitelists, and banning it would lock out every user anyway. guise therefore throttles failed logins itself, in memory, for the web login and the API alike. After 5 failures for a username from one client (IPv6 clients are grouped by /64) that pair is locked for 30 s, doubling per further failure up to 15 min; after 20 failures for a username across all clients the same curve applies to the whole username. Only one password check per username runs at a time. A successful login resets the per-client counter, and counters expire after an hour without failures. Throttled attempts get 429 and never reach dovecot. Log line: `LOGIN_THROTTLED`. A single lock lasts at most 15 min, but an attacker who keeps guessing keeps the username-wide lock in place. So a client that logged in successfully as that username in the last 30 days (same IP, or same IPv6 /64) is exempt from the username-wide lock (its own per-client lock still applies): the real user's usual devices keep working, while new clients wait. These exemptions are in memory and are forgotten on restart.
 - App-level rate limit (`flask-limiter`) caps `/login` at 20/min, `POST /aliases` at 30/min, and `POST /api/alias/random/new` at 30/min per client IP. `ProxyFix` is enabled so the real client IP is used (set `RemoteIPHeader X-Forwarded-For` in your reverse proxy and trust only the proxy's IP).
-- **Defence-in-depth on the web surface**: CSRF tokens validated on every unsafe-method request (except `/api/*`, which is header-authed and uses no session cookie); 16 KB `MAX_CONTENT_LENGTH` body cap; 12 h session lifetime with HttpOnly + SameSite=Lax cookies (and Secure unless `SESSION_COOKIE_SECURE=false`); atomic `O_EXCL` + `0o600` secret-key creation; open-redirect protection on the login `?next=` parameter (control characters rejected too); security headers on every response (a strict `Content-Security-Policy` with no inline script or style, `frame-ancestors 'none'` + `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: no-referrer`, and `Cache-Control: no-store` on everything except `/static/`); a denied user gets the same "Login failed." as a wrong password; the API failure log records `user=<invalid>` instead of a malformed username header.
+- **Sessions are tracked server-side.** Login issues a random session id that is stored in the signed cookie and checked against an in-memory registry on every dashboard request. A session ends 12 h after login regardless of activity. Logout revokes it, so a copy of the cookie stops working too, and a user added to `GUISE_DENIED_USERS` is logged out on their next request (all of their sessions are revoked). Rejected sessions are logged as `SESSION_REJECTED` with a reason (`no_session`, `unknown`, `expired`, `denied`). The registry is not persisted, so restarting guise logs everyone out; that is also the operator's "revoke all sessions" lever. Cookies issued before this change carry no session id and are rejected once, so users log in again after upgrading. The API is unaffected: it authenticates every request.
+- **Defence-in-depth on the web surface**: CSRF tokens validated on every unsafe-method request (except `/api/*`, which is header-authed and uses no session cookie); 16 KB `MAX_CONTENT_LENGTH` body cap; HttpOnly + SameSite=Lax cookies (and Secure unless `SESSION_COOKIE_SECURE=false`); atomic `O_EXCL` + `0o600` secret-key creation; open-redirect protection on the login `?next=` parameter (control characters rejected too); security headers on every response (a strict `Content-Security-Policy` with no inline script or style, `frame-ancestors 'none'` + `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: no-referrer`, and `Cache-Control: no-store` on everything except `/static/`); a denied user gets the same "Login failed." as a wrong password; the API failure log records `user=<invalid>` instead of a malformed username header.
 
 ### Further hardening (not default)
 

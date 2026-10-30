@@ -6,6 +6,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from .config import load_config
 from .backoff import LoginBackoff
+from .sessions import SessionRegistry
 from .extensions import limiter
 from . import api, auth, routes
 
@@ -71,6 +72,7 @@ def create_app() -> Flask:
     # Per-app instance (not a module global) so each app, and each test,
     # starts with clean counters.
     app.extensions["guise_backoff"] = LoginBackoff()
+    app.extensions["guise_sessions"] = SessionRegistry()
     auth.register(app)
     routes.register(app)
     api.register(app)
