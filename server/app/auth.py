@@ -18,6 +18,7 @@ from .extensions import limiter
 
 USERNAME_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,62}$")
 UNSAFE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+LOGIN_ENDPOINT = "auth.login"
 
 
 def csrf_token() -> str:
@@ -185,7 +186,7 @@ def login_required(view: Callable) -> Callable:
         sid = session.get("sid")
         if user is None and sid is None:
             # Not logged in at all: a normal visit, not worth a log line.
-            return redirect(url_for("auth.login", next=request.path))
+            return redirect(url_for(LOGIN_ENDPOINT, next=request.path))
         reason = _session_problem(user, sid, config)
         if reason is not None:
             registry = current_app.extensions["guise_sessions"]
@@ -197,7 +198,7 @@ def login_required(view: Callable) -> Callable:
             current_app.logger.warning(
                 "SESSION_REJECTED user=%s reason=%s ip=%s", user, reason, request.remote_addr,
             )
-            return redirect(url_for("auth.login", next=request.path))
+            return redirect(url_for(LOGIN_ENDPOINT, next=request.path))
         g.user = user
         g.target_email = f"{user}@{config.domain}"
         return view(*args, **kwargs)
@@ -278,6 +279,6 @@ def register(app: Flask) -> None:
             current_app.logger.info(
                 "LOGOUT user=%s ip=%s", user, request.remote_addr,
             )
-        return redirect(url_for("auth.login"))
+        return redirect(url_for(LOGIN_ENDPOINT))
 
     app.register_blueprint(bp)
