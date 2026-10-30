@@ -133,6 +133,31 @@ class TestRegistry:
         ]
         assert len(registry._sessions) == 3
 
+    def test_per_user_cap_evicts_own_oldest(self, registry, monkeypatch):
+        monkeypatch.setattr(sessions, "MAX_PER_USER", 3)
+        bob = registry.create("bob")
+        mine = [registry.create("alice") for _ in range(5)]
+        assert [registry.check(s, "alice") for s in mine] == [False, False, True, True, True]
+        assert registry.check(bob, "bob")
+
+    def test_login_flood_cannot_evict_other_users(self, registry, monkeypatch):
+        # One account logging in over and over (dropping its cookie each
+        # time) must not push other users out of a full registry.
+        monkeypatch.setattr(sessions, "MAX_SESSIONS", 50)
+        monkeypatch.setattr(sessions, "MAX_PER_USER", 5)
+        alice = registry.create("alice")
+        for _ in range(1000):
+            registry.create("mallory")
+        assert registry.check(alice, "alice")
+        assert len(registry._sessions) == 6
+
+    def test_default_clock_counts_suspend(self):
+        import time
+        if hasattr(time, "CLOCK_BOOTTIME"):
+            assert sessions._DEFAULT_CLOCK is sessions._boot_clock
+        else:
+            assert sessions._DEFAULT_CLOCK is time.monotonic
+
     def test_create_drops_expired(self, registry, clock):
         for i in range(5):
             registry.create(f"u{i}")
@@ -248,6 +273,18 @@ class TestWebSessions:
         with caplog.at_level(logging.WARNING):
             assert _kicked_out(client.get("/"))
         assert not _rejections(caplog)
+
+    def test_header_shows_user_only_for_valid_session(self, app, client):
+        _login(client)
+        assert b'class="user">alice' in _dashboard(client).data
+        thief = app.test_client()
+        _copy_cookie(client, thief)
+        with client.session_transaction() as s:
+            s["csrf_token"] = "t"
+        client.post("/logout", data={"csrf_token": "t"})
+        # The revoked copy no longer shows as logged in, even on a page
+        # without login_required.
+        assert b'class="user"' not in thief.get("/login").data
 
     def test_rejected_delete_does_nothing(self, client):
         with client.session_transaction() as s:
