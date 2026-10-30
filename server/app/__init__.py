@@ -1,7 +1,7 @@
 import logging
 from datetime import timedelta
 
-from flask import Flask
+from flask import Flask, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from .config import load_config
@@ -10,6 +10,26 @@ from . import api, auth, routes
 
 
 __version__ = "0.3.0"
+
+# All scripts and styles are served from /static, so the policy needs no
+# 'unsafe-inline'. frame-ancestors 'none' (plus X-Frame-Options for older
+# browsers) stops the dashboard being framed for clickjacking.
+_CSP = (
+    "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; "
+    "form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
+)
+
+
+def _security_headers(response):
+    response.headers.setdefault("Content-Security-Policy", _CSP)
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    # Pages show the user's alias list; keep them out of browser and proxy
+    # caches. Static assets are not user-specific and stay cacheable.
+    if not request.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 def _bridge_logger_to_gunicorn(app: Flask) -> None:
@@ -45,6 +65,7 @@ def create_app() -> Flask:
     )
     app.jinja_env.globals["csrf_token"] = auth.csrf_token
     app.before_request(auth.validate_csrf)
+    app.after_request(_security_headers)
     limiter.init_app(app)
     auth.register(app)
     routes.register(app)
