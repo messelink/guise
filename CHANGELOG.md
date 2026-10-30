@@ -2,7 +2,7 @@
 
 All notable changes to guise are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The project does not yet follow strict semantic versioning — backwards-incompatible changes before 1.0 will be called out explicitly.
 
-## [Unreleased]
+## [0.4.1] — 2026-10-30
 
 ### Security
 
