@@ -9,7 +9,7 @@ from .extensions import limiter
 from . import api, auth, routes
 
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 # All scripts and styles are served from /static, so the policy needs no
 # 'unsafe-inline'. frame-ancestors 'none' (plus X-Frame-Options for older
