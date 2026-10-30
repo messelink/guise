@@ -2,7 +2,7 @@
 
 All notable changes to guise are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The project does not yet follow strict semantic versioning — backwards-incompatible changes before 1.0 will be called out explicitly.
 
-## [Unreleased]
+## [0.4.0] — 2026-10-30
 
 ### Security
 
@@ -16,6 +16,11 @@ All notable changes to guise are documented here. Format loosely follows [Keep a
 - **Python dependencies are hash-locked** (#13). `requirements.txt` is now a `pip-compile --generate-hashes` lockfile covering every transitive dependency, generated from `requirements.in`; the image build and CI install with `--require-hashes` and wheels only. The `python:3.12-slim` base image is pinned to a digest. Dependabot now tracks the `pip` and `docker` ecosystems. Contributors: install test deps from `requirements-dev.txt`.
 - **Hostname auto-labelling no longer downloads the Public Suffix List at runtime** (#13). tldextract's default extractor fetched the live list from publicsuffix.org or GitHub on first use and cached it in the container. guise now uses only the snapshot bundled in the hash-locked tldextract wheel, so the API's `?hostname=` path needs no egress and uses no unverified data. The snapshot refreshes when tldextract is bumped.
 - **gunicorn's control socket is disabled.** gunicorn 26 opens a Unix control socket (`~/.gunicorn/gunicorn.ctl`) by default; guise doesn't use it, so the image now starts gunicorn with `--no-control-socket`.
+
+### Changed
+
+- Dependency updates: Flask 3.0.3 → 3.1.3 (fixes PYSEC-2026-2151, missing `Vary: Cookie`), flask-limiter 3.8.0 → 4.1.1, gunicorn 23.0.0 → 26.2.0, tldextract 5.3.1 → 5.4.0. Rate limits and the gthread worker setup were re-verified against a running container.
+- GitHub Actions bumped (checkout v7, setup-python v7, CodeQL 4.39.1, docker/* actions). The docs-only path filter was removed from pull-request triggers so required checks always report.
 
 ## [0.3.1] — 2026-06-19
 
