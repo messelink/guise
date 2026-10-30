@@ -10,9 +10,9 @@
 <body>
   <header>
     <h1><a href="{{ url_for('main.index') }}">guise</a></h1>
-    {% if session.user %}
+    {% if g.user %}
       <nav>
-        <span class="user">{{ session.user }}</span>
+        <span class="user">{{ g.user }}</span>
         <form method="post" action="{{ url_for('auth.logout') }}" class="inline">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="link">log out</button>

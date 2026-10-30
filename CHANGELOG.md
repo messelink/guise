@@ -2,6 +2,12 @@
 
 All notable changes to guise are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The project does not yet follow strict semantic versioning — backwards-incompatible changes before 1.0 will be called out explicitly.
 
+## [Unreleased]
+
+### Security
+
+- **Sessions can be revoked** (#26). Web sessions were only signed cookies, so logout cleared just the browser's copy and a copied cookie kept working; Flask re-signed the cookie on every request, so an active session never expired; and adding a user to `GUISE_DENIED_USERS` didn't end the sessions they already had. guise now issues a random session id at login and checks it against an in-memory registry on every dashboard request. A session ends 12 h after login regardless of activity, logout revokes it server-side, and the denylist is checked on every request, not only at login. Each user keeps at most 20 sessions, so one account can't evict other users' sessions by logging in repeatedly. The header now shows the username only for a valid session. Rejections are logged as `SESSION_REJECTED` with a reason. Sessions are not persisted: restarting guise logs everyone out, which is also how an operator revokes all sessions. **Upgrading logs every user out once**, because existing cookies carry no session id. The API is unchanged.
+
 ## [0.4.1] — 2026-10-30
 
 ### Security

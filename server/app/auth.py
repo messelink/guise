@@ -18,6 +18,7 @@ from .extensions import limiter
 
 USERNAME_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,62}$")
 UNSAFE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+LOGIN_ENDPOINT = "auth.login"
 
 
 def csrf_token() -> str:
@@ -163,13 +164,43 @@ def retry_after_seconds(username: str, ip: str) -> int:
     return max(1, int(wait) + (wait % 1 > 0))
 
 
+def _session_problem(user: object, sid: object, config: Config) -> str | None:
+    """Why the current session isn't valid, or None if it is."""
+    if not user or not sid:
+        # A cookie from before server-side sessions has a user but no sid.
+        return "no_session"
+    registry = current_app.extensions["guise_sessions"]
+    status = registry.status(sid, user)
+    if status != "ok":
+        return status
+    if user in config.denied_users:
+        return "denied"
+    return None
+
+
 def login_required(view: Callable) -> Callable:
     @wraps(view)
     def wrapped(*args, **kwargs):
-        if "user" not in session:
-            return redirect(url_for("auth.login", next=request.path))
-        g.user = session["user"]
-        g.target_email = f"{g.user}@{current_app.config['GUISE'].domain}"
+        config: Config = current_app.config["GUISE"]
+        user = session.get("user")
+        sid = session.get("sid")
+        if user is None and sid is None:
+            # Not logged in at all: a normal visit, not worth a log line.
+            return redirect(url_for(LOGIN_ENDPOINT, next=request.path))
+        reason = _session_problem(user, sid, config)
+        if reason is not None:
+            registry = current_app.extensions["guise_sessions"]
+            if reason == "denied":
+                registry.revoke_user(user)
+            elif sid is not None:
+                registry.revoke(sid)
+            session.clear()
+            current_app.logger.warning(
+                "SESSION_REJECTED user=%s reason=%s ip=%s", user, reason, request.remote_addr,
+            )
+            return redirect(url_for(LOGIN_ENDPOINT, next=request.path))
+        g.user = user
+        g.target_email = f"{user}@{config.domain}"
         return view(*args, **kwargs)
     return wrapped
 
@@ -202,8 +233,15 @@ def register(app: Flask) -> None:
                 ip = request.remote_addr
                 outcome = check_credentials(username, password, ip, config)
                 if outcome is Outcome.OK:
+                    registry = current_app.extensions["guise_sessions"]
+                    # Logging in again replaces the old session rather than
+                    # leaving it valid alongside the new one.
+                    registry.revoke(session.get("sid"))
+                    # Clear before setting keys, so no pre-login state
+                    # (session fixation) carries over.
                     session.clear()
                     session["user"] = username
+                    session["sid"] = registry.create(username)
                     session.permanent = True
                     current_app.logger.info("LOGIN user=%s ip=%s", username, ip)
                     default_next = url_for("main.index")
@@ -234,11 +272,13 @@ def register(app: Flask) -> None:
     @bp.route("/logout", methods=["POST"])
     def logout():
         user = session.get("user")
+        # Revoke server-side so a copy of this cookie stops working too.
+        current_app.extensions["guise_sessions"].revoke(session.get("sid"))
         session.clear()
         if user:
             current_app.logger.info(
                 "LOGOUT user=%s ip=%s", user, request.remote_addr,
             )
-        return redirect(url_for("auth.login"))
+        return redirect(url_for(LOGIN_ENDPOINT))
 
     app.register_blueprint(bp)
