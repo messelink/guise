@@ -2,11 +2,15 @@ import imaplib
 import re
 import secrets
 import ssl
+from enum import Enum
 from functools import wraps
 from typing import Callable
 from urllib.parse import urlparse
 
-from flask import Flask, abort, current_app, flash, g, redirect, render_template, request, session, url_for
+from flask import (
+    Flask, abort, current_app, flash, g, make_response, redirect, render_template, request,
+    session, url_for,
+)
 
 from .config import Config
 from .extensions import limiter
@@ -116,19 +120,47 @@ def _imap_check(username: str, password: str, config: Config) -> bool:
         return False
 
 
-def verify_credentials(username: str, password: str, config: Config) -> bool:
-    """Validate a short username + password against denylist, regex, and IMAP.
+class Outcome(Enum):
+    OK = "ok"
+    FAILED = "failed"
+    DENIED = "denied"
+    THROTTLED = "throttled"
+    BUSY = "busy"
 
-    Shared by the web login flow and the API auth path so they accept exactly
-    the same identities.
+
+def check_credentials(username: str, password: str, ip: str, config: Config) -> Outcome:
+    """Check a shape-valid short username + non-empty password.
+
+    Shared by the web login and the API so both apply the same backoff,
+    denylist and IMAP check. Order matters: the backoff runs first so a
+    throttled attempt never reaches dovecot, and the denylist runs before
+    IMAP so service-account passwords are never sent there. Denied logins
+    count as failures, so the denylist can't be told apart by backoff.
     """
-    if not username or not password:
-        return False
-    if not USERNAME_RE.match(username):
-        return False
-    if username in config.denied_users:
-        return False
-    return _imap_check(username, password, config)
+    backoff = current_app.extensions["guise_backoff"]
+    claim = backoff.begin(username, ip)
+    if claim != "ok":
+        return Outcome.THROTTLED if claim == "throttled" else Outcome.BUSY
+    outcome = Outcome.FAILED
+    try:
+        if username in config.denied_users:
+            outcome = Outcome.DENIED
+        elif _imap_check(username, password, config):
+            outcome = Outcome.OK
+    finally:
+        # Always release the claim from begin(), even if the check raised;
+        # an unexpected error counts as a failure.
+        if outcome is Outcome.OK:
+            backoff.record_success(username, ip)
+        else:
+            backoff.record_failure(username, ip)
+    return outcome
+
+
+def retry_after_seconds(username: str, ip: str) -> int:
+    """Whole seconds to wait before retrying, rounded up; for Retry-After."""
+    wait = current_app.extensions["guise_backoff"].retry_after(username, ip)
+    return max(1, int(wait) + (wait % 1 > 0))
 
 
 def login_required(view: Callable) -> Callable:
@@ -166,27 +198,36 @@ def register(app: Flask) -> None:
             # denied user ("Login failed.") apart from everyone else.
             elif not password:
                 flash("Password required.", "error")
-            elif username in config.denied_users:
-                current_app.logger.warning(
-                    "LOGIN_DENIED user=%s ip=%s", username, request.remote_addr,
-                )
-                # Same message as a wrong password, so the response doesn't
-                # reveal who is on the denylist. The log keeps the reason.
-                flash("Login failed.", "error")
-            elif _imap_check(username, password, config):
-                session.clear()
-                session["user"] = username
-                session.permanent = True
-                current_app.logger.info(
-                    "LOGIN user=%s ip=%s", username, request.remote_addr,
-                )
-                default_next = url_for("main.index")
-                next_url = _safe_next_url(request.args.get("next"), default_next)
-                return redirect(next_url)
             else:
-                current_app.logger.warning(
-                    "LOGIN_FAILED user=%s ip=%s", username, request.remote_addr,
-                )
+                ip = request.remote_addr
+                outcome = check_credentials(username, password, ip, config)
+                if outcome is Outcome.OK:
+                    session.clear()
+                    session["user"] = username
+                    session.permanent = True
+                    current_app.logger.info("LOGIN user=%s ip=%s", username, ip)
+                    default_next = url_for("main.index")
+                    next_url = _safe_next_url(request.args.get("next"), default_next)
+                    return redirect(next_url)
+                if outcome in (Outcome.THROTTLED, Outcome.BUSY):
+                    busy = outcome is Outcome.BUSY
+                    current_app.logger.warning(
+                        "%s user=%s ip=%s", "LOGIN_BUSY" if busy else "LOGIN_THROTTLED", username, ip,
+                    )
+                    flash(
+                        "Another login for this account is in progress. Try again in a moment."
+                        if busy else "Too many failed attempts. Try again later.",
+                        "error",
+                    )
+                    resp = make_response(render_template("login.html"), 429)
+                    resp.headers["Retry-After"] = "1" if busy else str(retry_after_seconds(username, ip))
+                    return resp
+                if outcome is Outcome.DENIED:
+                    current_app.logger.warning("LOGIN_DENIED user=%s ip=%s", username, ip)
+                else:
+                    current_app.logger.warning("LOGIN_FAILED user=%s ip=%s", username, ip)
+                # Same message for denied and wrong password, so the response
+                # doesn't reveal who is on the denylist. The log keeps the reason.
                 flash("Login failed.", "error")
         return render_template("login.html")
 

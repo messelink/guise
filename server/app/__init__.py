@@ -5,6 +5,7 @@ from flask import Flask, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from .config import load_config
+from .backoff import LoginBackoff
 from .extensions import limiter
 from . import api, auth, routes
 
@@ -67,6 +68,9 @@ def create_app() -> Flask:
     app.before_request(auth.validate_csrf)
     app.after_request(_security_headers)
     limiter.init_app(app)
+    # Per-app instance (not a module global) so each app, and each test,
+    # starts with clean counters.
+    app.extensions["guise_backoff"] = LoginBackoff()
     auth.register(app)
     routes.register(app)
     api.register(app)

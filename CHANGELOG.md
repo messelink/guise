@@ -2,6 +2,12 @@
 
 All notable changes to guise are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The project does not yet follow strict semantic versioning — backwards-incompatible changes before 1.0 will be called out explicitly.
 
+## [Unreleased]
+
+### Security
+
+- **Per-username brute-force backoff** (#23). The mailserver's fail2ban never saw guise logins (they all come from guise's container IP, which is whitelisted), so the only limit was per-IP: about 50 password guesses a minute against any mailbox. guise now counts failed logins per (username, client IP) and per username, shared by the web login and the API. After 5 failures from one IP, or 20 across all IPs, the username is locked for 30 s, doubling per further failure up to 15 min. IPv6 clients are grouped by /64, and only one password check per username runs at a time. Throttled attempts return 429 (with `Retry-After` on the API) and never reach dovecot. A single lock lasts at most 15 min. A client that logged in successfully as the user in the last 30 days is exempt from the username-wide lock, so sustained guessing from elsewhere doesn't lock the real user out of their usual devices.
+
 ## [0.4.0] — 2026-10-30
 
 ### Security

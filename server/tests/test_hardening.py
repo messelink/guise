@@ -113,4 +113,4 @@ class TestApiFailureLog:
     def test_valid_username_still_logged(self, client, caplog):
         with caplog.at_level(logging.WARNING):
             client.post("/api/alias/random/new", headers={"Authentication": "gitea:pw"})  # NOSONAR — test fixture, not a real credential
-        assert any("LOGIN_FAILED user=gitea" in r.message for r in caplog.records)
+        assert any("LOGIN_DENIED user=gitea" in r.message for r in caplog.records)

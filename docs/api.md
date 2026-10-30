@@ -103,9 +103,8 @@ Standard HTTP status codes, JSON body:
 | Status | When |
 |---|---|
 | `400 Bad Request` | malformed JSON, invalid hostname shape |
-| `401 Unauthorized` | missing/malformed `Authentication` header |
-| `403 Forbidden` | valid credentials but the user is on `GUISE_DENIED_USERS`, or attempting to delete an alias not targeting them |
-| `429 Too Many Requests` | rate limit (30/min per IP) tripped |
+| `401 Unauthorized` | missing/malformed `Authentication` header, wrong credentials, or the user is on `GUISE_DENIED_USERS` (deliberately indistinguishable) |
+| `429 Too Many Requests` | rate limit (30/min per IP) tripped, or too many failed logins for this username (`{"error": "too many failed attempts"}` with a `Retry-After` header in seconds), or another login for this username is still being checked (`{"error": "login in progress"}`, `Retry-After: 1`) |
 | `500 Internal Server Error` | `docker exec mailserver setup alias add` failed; detail logged server-side |
 
 Error body shape (loose SimpleLogin compatibility):
