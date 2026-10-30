@@ -16,7 +16,8 @@ updates:
     directory: /server
     schedule:
       interval: weekly
-  # Bumps the digest-pinned base image in server/Dockerfile.
+  # Bumps the digest-pinned base image in server/Dockerfile. Keep the
+  # FROM line as tag@digest: Dependabot needs the tag for readable bumps.
   - package-ecosystem: docker
     directory: /server
     schedule:
