@@ -6,7 +6,7 @@ alias → SimpleLogin (self-hosted server)" username generator.
 from flask import Blueprint, Flask, current_app, jsonify, request
 
 from . import aliases
-from .auth import USERNAME_RE, verify_credentials
+from .auth import USERNAME_RE, Outcome, check_credentials, retry_after_seconds
 from .config import Config
 from .extensions import limiter
 
@@ -24,28 +24,49 @@ def _parse_authentication_header(value: str) -> tuple[str, str] | None:
     return username.strip().lower(), password
 
 
-def _authenticate(config: Config) -> str | None:
-    """Return the short username on success, None otherwise."""
+def _authenticate(config: Config) -> tuple[str | None, Outcome, int]:
+    """Return (username, outcome, retry_after).
+
+    username is set only on Outcome.OK; retry_after (seconds) only on
+    Outcome.THROTTLED.
+    """
     creds = _parse_authentication_header(request.headers.get("Authentication", ""))
     if not creds:
-        return None
+        return None, Outcome.FAILED, 0
     username, password = creds
-    if not verify_credentials(username, password, config):
-        current_app.logger.warning(
-            "LOGIN_FAILED user=%s ip=%s via=api",
-            # A malformed value may be a password pasted into the wrong field.
-            username if USERNAME_RE.match(username) else "<invalid>",
-            request.remote_addr,
-        )
-        return None
-    return username
+    ip = request.remote_addr
+    if not USERNAME_RE.match(username):
+        # A malformed value may be a password pasted into the wrong field.
+        current_app.logger.warning("LOGIN_FAILED user=<invalid> ip=%s via=api", ip)
+        return None, Outcome.FAILED, 0
+    if not password:
+        current_app.logger.warning("LOGIN_FAILED user=%s ip=%s via=api", username, ip)
+        return None, Outcome.FAILED, 0
+    outcome = check_credentials(username, password, ip, config)
+    if outcome is Outcome.OK:
+        return username, outcome, 0
+    event = {
+        Outcome.THROTTLED: "LOGIN_THROTTLED",
+        Outcome.BUSY: "LOGIN_BUSY",
+        Outcome.DENIED: "LOGIN_DENIED",
+    }.get(outcome, "LOGIN_FAILED")
+    current_app.logger.warning("%s user=%s ip=%s via=api", event, username, ip)
+    retry = {Outcome.THROTTLED: retry_after_seconds(username, ip), Outcome.BUSY: 1}.get(outcome, 0)
+    return None, outcome, retry
 
 
 @bp.route("/alias/random/new", methods=["POST"])
 @limiter.limit("30 per minute")
 def create_random_alias():
     config: Config = current_app.config["GUISE"]
-    username = _authenticate(config)
+    username, outcome, retry = _authenticate(config)
+    if outcome in (Outcome.THROTTLED, Outcome.BUSY):
+        resp = jsonify({
+            "error": "login in progress" if outcome is Outcome.BUSY else "too many failed attempts",
+        })
+        resp.status_code = 429
+        resp.headers["Retry-After"] = str(retry)
+        return resp
     if not username:
         return jsonify({"error": "authentication required"}), 401
 
