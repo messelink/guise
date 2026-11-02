@@ -50,7 +50,8 @@ class _Entry:
     locked_until: float
 
 
-def _client_net(ip: str) -> str:
+def client_net(ip: str) -> str:
+    """Key for a client: the IPv4 address, or the /64 of an IPv6 one."""
     try:
         addr = ipaddress.ip_address(ip)
     except ValueError:
@@ -136,14 +137,14 @@ class LoginBackoff:
     def retry_after(self, username: str, ip: str) -> float:
         """Seconds until this username may try again from this IP; 0 if allowed."""
         with self._lock:
-            return self._wait(username, _client_net(ip), self._clock())
+            return self._wait(username, client_net(ip), self._clock())
 
     def begin(self, username: str, ip: str) -> str:
         """Claim the right to check a password: "ok", "throttled", or "busy"
         (another check for this username is waiting on dovecot). On "ok" the
         caller must call record_failure or record_success, which release it."""
         with self._lock:
-            if self._wait(username, _client_net(ip), self._clock()) > 0:
+            if self._wait(username, client_net(ip), self._clock()) > 0:
                 return "throttled"
             if username in self._in_flight:
                 return "busy"
@@ -154,14 +155,14 @@ class LoginBackoff:
         now = self._clock()
         with self._lock:
             self._in_flight.discard(username)
-            self._pairs.fail((username, _client_net(ip)), now)
+            self._pairs.fail((username, client_net(ip)), now)
             self._users.fail((username,), now)
 
     def record_success(self, username: str, ip: str) -> None:
         # Only the pair resets. The username-wide counter tracks guesses from
         # other IPs, and the real user logging in doesn't make those go away.
         now = self._clock()
-        key = (username, _client_net(ip))
+        key = (username, client_net(ip))
         with self._lock:
             self._in_flight.discard(username)
             self._pairs.entries.pop(key, None)

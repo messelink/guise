@@ -2,6 +2,12 @@
 
 All notable changes to guise are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The project does not yet follow strict semantic versioning — backwards-incompatible changes before 1.0 will be called out explicitly.
 
+## [Unreleased]
+
+### Security
+
+- **Rate limits group IPv6 clients by /64** (#29). The flask-limiter limits on `/login`, `POST /aliases` and the API were keyed on the full client address, so an IPv6 client could rotate through addresses in its /64 and never hit them. They now use the same client key as the login backoff: the IPv4 address, or the /64 of an IPv6 one. Per-account password guessing was already bounded by the backoff; this closes the gap for spraying across usernames and for request volume.
+
 ## [0.4.2] — 2026-10-30
 
 ### Security
